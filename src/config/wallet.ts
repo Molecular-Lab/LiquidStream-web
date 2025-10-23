@@ -6,7 +6,7 @@ export const config = createConfig({
     storage: cookieStorage,
   }),
   transports: {
-    [sepolia.id]: http(),
+    [sepolia.id]: http("https://rpc.sepolia.org"),
     [scrollSepolia.id]: http(),
     [optimismSepolia.id]: http(),
     [baseSepolia.id]: http(),
