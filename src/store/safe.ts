@@ -1,0 +1,152 @@
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
+
+export interface SafeSigner {
+  address: string
+  name: string
+  email?: string
+  role?: string
+}
+
+export interface PendingTransaction {
+  id: string
+  type: "start_stream" | "stop_stream" | "transfer" | "other"
+  description: string
+  to: string
+  value?: string
+  data?: string
+  signatures: string[] // Array of signer addresses who have signed
+  requiredSignatures: number
+  createdAt: string
+  createdBy: string
+  status: "pending" | "ready" | "executed" | "rejected"
+  nonce: number
+}
+
+export interface SafeConfig {
+  address: string
+  signers: SafeSigner[]
+  threshold: number
+  chainId: number
+  createdAt: string
+  createdBy: string // Owner address
+  workspaceName?: string
+}
+
+interface SafeStore {
+  safeConfig: SafeConfig | null
+  pendingTransactions: PendingTransaction[]
+  
+  // Safe configuration
+  setSafeConfig: (config: SafeConfig) => void
+  clearSafeConfig: () => void
+  
+  // Transaction management
+  addPendingTransaction: (tx: Omit<PendingTransaction, "id" | "createdAt">) => void
+  signTransaction: (txId: string, signerAddress: string) => void
+  executeTransaction: (txId: string) => void
+  removePendingTransaction: (txId: string) => void
+  
+  // Signer info
+  isSigner: (address: string) => boolean
+  getSignerInfo: (address: string) => SafeSigner | undefined
+  getPendingForSigner: (address: string) => PendingTransaction[]
+}
+
+export const useSafe = create<SafeStore>()(
+  persist(
+    (set, get) => ({
+      safeConfig: null,
+      pendingTransactions: [],
+
+      setSafeConfig: (config) => {
+        set({ safeConfig: config })
+        // Also save to sessionStorage
+        sessionStorage.setItem("safe_config", JSON.stringify(config))
+      },
+
+      clearSafeConfig: () => {
+        set({ safeConfig: null, pendingTransactions: [] })
+        sessionStorage.removeItem("safe_config")
+      },
+
+      addPendingTransaction: (tx) => {
+        const newTx: PendingTransaction = {
+          ...tx,
+          id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          createdAt: new Date().toISOString(),
+          status: "pending",
+        }
+        
+        set((state) => ({
+          pendingTransactions: [...state.pendingTransactions, newTx],
+        }))
+      },
+
+      signTransaction: (txId, signerAddress) => {
+        set((state) => {
+          const updatedTxs = state.pendingTransactions.map((tx) => {
+            if (tx.id === txId && !tx.signatures.includes(signerAddress)) {
+              const newSignatures = [...tx.signatures, signerAddress]
+              const isReady = newSignatures.length >= tx.requiredSignatures
+              
+              return {
+                ...tx,
+                signatures: newSignatures,
+                status: isReady ? "ready" : "pending",
+              } as PendingTransaction
+            }
+            return tx
+          })
+          
+          return { pendingTransactions: updatedTxs }
+        })
+      },
+
+      executeTransaction: (txId) => {
+        set((state) => {
+          const updatedTxs = state.pendingTransactions.map((tx) =>
+            tx.id === txId ? { ...tx, status: "executed" as const } : tx
+          )
+          
+          // Remove executed transactions after a delay (or keep for history)
+          return { pendingTransactions: updatedTxs }
+        })
+      },
+
+      removePendingTransaction: (txId) => {
+        set((state) => ({
+          pendingTransactions: state.pendingTransactions.filter((tx) => tx.id !== txId),
+        }))
+      },
+
+      isSigner: (address) => {
+        const { safeConfig } = get()
+        if (!safeConfig) return false
+        return safeConfig.signers.some(
+          (s) => s.address.toLowerCase() === address.toLowerCase()
+        )
+      },
+
+      getSignerInfo: (address) => {
+        const { safeConfig } = get()
+        if (!safeConfig) return undefined
+        return safeConfig.signers.find(
+          (s) => s.address.toLowerCase() === address.toLowerCase()
+        )
+      },
+
+      getPendingForSigner: (address) => {
+        const { pendingTransactions } = get()
+        return pendingTransactions.filter(
+          (tx) =>
+            tx.status !== "executed" &&
+            !tx.signatures.includes(address.toLowerCase())
+        )
+      },
+    }),
+    {
+      name: "safe-store",
+    }
+  )
+)
