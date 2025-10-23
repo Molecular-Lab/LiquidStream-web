@@ -3,11 +3,19 @@ import { toast } from "sonner"
 import { Address } from "viem"
 import { useAccount, usePublicClient, useWriteContract } from "wagmi"
 
-import { CFA_ABI, client, ContractConfigs, contracts } from "@/lib/contract"
+import { 
+  CFA_ABI, 
+  HOST_ADDRESS, 
+  HOST_ABI,
+  buildCreateFlowOperation,
+  buildUpdateFlowOperation,
+  buildDeleteFlowOperation,
+  CFAV1_ADDRESS,
+} from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
 
 /**
- * Hook to create a new payment stream
+ * Hook to create a new payment stream using Superfluid batchCall
  */
 export const useCreateStream = () => {
   const { writeContractAsync } = useWriteContract()
@@ -33,9 +41,16 @@ export const useCreateStream = () => {
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      const config = ContractConfigs.createFlow(token, receiver, flowRate)
-      
-      const hash = await writeContractAsync(config as any)
+      // Build createFlow operation
+      const operation = buildCreateFlowOperation(token, receiver, flowRate)
+
+      // Execute batchCall on Superfluid Host
+      const hash = await writeContractAsync({
+        address: HOST_ADDRESS,
+        abi: HOST_ABI,
+        functionName: "batchCall",
+        args: [[operation]],
+      } as any)
 
       // Add to local store
       addStream({
@@ -66,7 +81,7 @@ export const useCreateStream = () => {
 }
 
 /**
- * Hook to update an existing payment stream
+ * Hook to update an existing payment stream using batchCall
  */
 export const useUpdateStream = () => {
   const { writeContractAsync } = useWriteContract()
@@ -88,9 +103,16 @@ export const useUpdateStream = () => {
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      const config = ContractConfigs.updateFlow(token, receiver, newFlowRate)
-      
-      const hash = await writeContractAsync(config as any)
+      // Build updateFlow operation
+      const operation = buildUpdateFlowOperation(token, receiver, newFlowRate)
+
+      // Execute batchCall
+      const hash = await writeContractAsync({
+        address: HOST_ADDRESS,
+        abi: HOST_ABI,
+        functionName: "batchCall",
+        args: [[operation]],
+      } as any)
 
       // Update local store
       updateStream(streamId, {
@@ -115,7 +137,7 @@ export const useUpdateStream = () => {
 }
 
 /**
- * Hook to delete/stop a payment stream
+ * Hook to delete/stop a payment stream using batchCall
  */
 export const useDeleteStream = () => {
   const { writeContractAsync } = useWriteContract()
@@ -135,9 +157,16 @@ export const useDeleteStream = () => {
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      const config = ContractConfigs.deleteFlow(token, address, receiver)
-      
-      const hash = await writeContractAsync(config as any)
+      // Build deleteFlow operation
+      const operation = buildDeleteFlowOperation(token, address, receiver)
+
+      // Execute batchCall
+      const hash = await writeContractAsync({
+        address: HOST_ADDRESS,
+        abi: HOST_ABI,
+        functionName: "batchCall",
+        args: [[operation]],
+      } as any)
 
       // Update local store
       endStream(streamId)
@@ -170,11 +199,11 @@ export const useGetFlow = (token: Address, sender: Address, receiver: Address) =
       if (!publicClient) throw new Error("Public client not available")
 
       const result = await publicClient.readContract({
-        address: contracts.cfaV1,
+        address: CFAV1_ADDRESS,
         abi: CFA_ABI,
         functionName: "getFlow",
         args: [token, sender, receiver],
-      })
+      } as any)
 
       return {
         timestamp: result[0],
@@ -200,11 +229,11 @@ export const useGetNetFlow = (token: Address, account: Address) => {
       if (!publicClient) throw new Error("Public client not available")
 
       const flowRate = await publicClient.readContract({
-        address: contracts.cfaV1,
+        address: CFAV1_ADDRESS,
         abi: CFA_ABI,
         functionName: "getNetFlow",
         args: [token, account],
-      })
+      } as any)
 
       return flowRate
     },

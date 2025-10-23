@@ -30,7 +30,7 @@ interface StreamState {
 }
 
 export const useStreamStore = create<StreamState>()(
-  persist(
+  persist<StreamState>(
     (set, get) => ({
       streams: [],
 
@@ -88,7 +88,7 @@ export const useStreamStore = create<StreamState>()(
         const activeStreams = get().getActiveStreams()
         return activeStreams.reduce(
           (total, stream) => total + BigInt(stream.flowRate),
-          0n
+          BigInt(0)
         )
       },
     }),

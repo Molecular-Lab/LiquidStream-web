@@ -3,10 +3,12 @@
 import { useState } from "react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 
-import { DashboardStats } from "@/components/dashboard/dashboard-stats"
+import { SuperfluidDashboard } from "@/components/dashboard/superfluid-dashboard"
 import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
 import { EmployeeList } from "@/components/employees/employee-list"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
+import { StreamsList } from "@/components/streams/streams-list"
+import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useDeleteStream } from "@/hooks/use-streams"
 import { Employee } from "@/store/employees"
@@ -52,8 +54,14 @@ export default function Home() {
         <ConnectButton />
       </div>
 
-      {/* Stats */}
-      <DashboardStats />
+      {/* Superfluid-style Dashboard */}
+      <SuperfluidDashboard />
+
+      {/* Upgrade/Downgrade Card */}
+      <UpgradeDowngradeCard />
+
+      {/* Streams List (Database-less) */}
+      <StreamsList />
 
       {/* Employee Management */}
       <Card>

@@ -47,13 +47,9 @@ const employeeFormSchema = z.object({
     "designer",
     "manager",
     "marketing",
-    "sales",
     "other",
   ]),
   department: z.string().min(2, "Department must be at least 2 characters"),
-  salary: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Salary must be a positive number",
-  }),
 })
 
 type EmployeeFormValues = z.infer<typeof employeeFormSchema>
@@ -62,7 +58,7 @@ export function AddEmployeeDialog() {
   const [open, setOpen] = useState(false)
   const addEmployee = useEmployeeStore((state) => state.addEmployee)
 
-  const form = useForm<EmployeeFormValues>({
+  const form = useForm({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       name: "",
@@ -70,14 +66,17 @@ export function AddEmployeeDialog() {
       walletAddress: "",
       role: "developer",
       department: "",
-      salary: "",
     },
   })
 
   const onSubmit = (data: EmployeeFormValues) => {
     addEmployee({
-      ...data,
+      name: data.name,
+      email: data.email,
       walletAddress: data.walletAddress as `0x${string}`,
+      role: data.role as EmployeeRole,
+      department: data.department,
+      salary: "0", // Default salary, will be set when creating stream
       startDate: new Date(),
       isActive: true,
     })
@@ -198,28 +197,6 @@ export function AddEmployeeDialog() {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="salary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Annual Salary (USD)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="100000"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Annual salary in USD for streaming calculations
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <DialogFooter>
               <Button type="submit" className="w-full sm:w-auto">
                 Add Employee

@@ -1,8 +1,8 @@
 import { QueryClient, useQuery } from "@tanstack/react-query"
 import { useAccount } from "wagmi"
 
-import { client, contracts, SUPER_TOKEN_ABI } from "@/lib/contract"
-import { Address } from "viem"
+import { publicClient, PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
+import { ERC20_PYUSD_ABI } from "@/asset/abi"
 
 export const refreshTokenBalances = (queryClient: QueryClient) => {
   queryClient.invalidateQueries({
@@ -16,21 +16,27 @@ export const useTokenBalances = () => {
   return useQuery({
     queryKey: ["token-balances", address],
     queryFn: async () => {
-      if (!address) return { pyusdx: 0 }
+      if (!address) return { pyusdx: 0, pyusd: 0 }
       
-      const results = await client.multicall({
-        contracts: [
-          {
-            abi: SUPER_TOKEN_ABI,
-            address: contracts.pyusdx,
-            functionName: "balanceOf",
-            args: [address],
-          },
-        ],
-      })
+      // Use separate readContract calls to avoid deep type instantiation
+      const [pyusdxBalance, pyusdBalance] = await Promise.all([
+        publicClient.readContract({
+          abi: SUPER_TOKEN_ABI,
+          address: PYUSDX_ADDRESS,
+          functionName: "balanceOf",
+          args: [address],
+        }),
+        publicClient.readContract({
+          abi: ERC20_PYUSD_ABI,
+          address: PYUSD_ADDRESS,
+          functionName: "balanceOf",
+          args: [address],
+        })
+      ])
       
       return {
-        pyusdx: results[0].result ? Number(results[0].result) / 1e18 : 0,
+        pyusdx: pyusdxBalance ? Number(pyusdxBalance) / 1e18 : 0,
+        pyusd: pyusdBalance ? Number(pyusdBalance) / 1e18 : 0,
       }
     },
     enabled: !!address,

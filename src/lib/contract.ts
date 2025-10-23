@@ -1,65 +1,119 @@
-import { createConfig, getAccount, http } from "@wagmi/core"
-import { sepolia, scrollSepolia } from "@wagmi/core/chains"
-import { Address, createPublicClient, parseAbi } from "viem"
+import { Address, createPublicClient, http, parseAbi, encodeFunctionData, encodeAbiParameters, parseAbiParameters } from "viem"
+import { sepolia } from "viem/chains"
 
-// Superfluid contract addresses on Sepolia testnet
-export const SuperfluidContracts = {
-  // Sepolia
-  cfaV1: "0x18fB38404DADeE1727Be4b805c5b242B5413Fa40" as Address, // CFA (Constant Flow Agreement)
-  host: "0x109412E3C84f0539b43d39dB691B08c90f58dC7c" as Address, // Superfluid Host
-  // Super Tokens
-  pyusdx: "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7" as Address, // Super PYUSD on Sepolia (update with actual address)
+import {
+  CFA_ABI as CFA_ABI_STRINGS,
+  SuperToken_ABI,
+  SuperfluidHost_ABI,
+} from "@/asset/abi"
+
+export const PYUSD_ADDRESS = "0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9" as Address
+export const PYUSDX_ADDRESS = "0x8fece7605C7475cc5f1d697D8915408986CA9fB6" as Address // Super PYUSD on Sepolia (update with actual address)
+
+export const CFAV1_ADDRESS = "0x6836F23d6171D74Ef62FcF776655aBcD2bcd62Ef" as Address // CFA (Constant Flow Agreement)
+export const HOST_ADDRESS = "0x109412E3C84f0539b43d39dB691B08c90f58dC7c" as Address // Superfluid Host
+
+// Parse ABIs from asset/abi.ts
+export const CFA_ABI = parseAbi(CFA_ABI_STRINGS)
+export const SUPER_TOKEN_ABI = parseAbi(SuperToken_ABI)
+export const HOST_ABI = parseAbi(SuperfluidHost_ABI)
+
+// Operation types for Superfluid batchCall
+export const OPERATION_TYPE = {
+  SUPERFLUID_CALL_AGREEMENT: 201, // For CFA operations (createFlow, updateFlow, deleteFlow)
+  SUPERFLUID_CALL_APP_ACTION: 202,
+} as const
+
+// Helper to build batchCall operations
+export interface Operation {
+  operationType: number
+  target: Address
+  data: `0x${string}`
 }
 
-export const contractConfig = createConfig({
-  chains: [sepolia, scrollSepolia],
-  transports: {
-    [sepolia.id]: http(),
-    [scrollSepolia.id]: http(),
-  },
-})
+/**
+ * Build createFlow operation for batchCall
+ * @param token - SuperToken address
+ * @param receiver - Receiver address
+ * @param flowRate - Flow rate in wei/second
+ * @returns Operation object for batchCall
+ */
+export function buildCreateFlowOperation(
+  token: Address,
+  receiver: Address,
+  flowRate: bigint
+): Operation {
+  // Encode createFlow function call
+  const createFlowCallData = encodeFunctionData({
+    abi: CFA_ABI,
+    functionName: "createFlow",
+    args: [token, receiver, flowRate as any, "0x"],
+  })
 
-export const { connector, address: AccountAddress } = getAccount(contractConfig)
+  // Encode operation data (callData, userData)
+  const operationData = encodeAbiParameters(
+    parseAbiParameters("bytes, bytes"),
+    [createFlowCallData, "0x"]
+  )
 
-// Superfluid CFA (Constant Flow Agreement) ABI - simplified for essential operations
-export const CFA_ABI = parseAbi([
-  // Read functions
-  "function getFlow(address token, address sender, address receiver) view returns (uint256 timestamp, int96 flowRate, uint256 deposit, uint256 owedDeposit)",
-  "function getNetFlow(address token, address account) view returns (int96 flowRate)",
-  "function getAccountFlowInfo(address token, address account) view returns (uint256 timestamp, int96 flowRate, uint256 deposit, uint256 owedDeposit)",
-  
-  // Write functions
-  "function createFlow(address token, address receiver, int96 flowRate, bytes userData) returns (bool)",
-  "function updateFlow(address token, address receiver, int96 flowRate, bytes userData) returns (bool)",
-  "function deleteFlow(address token, address sender, address receiver, bytes userData) returns (bool)",
-  
-  // Events
-  "event FlowUpdated(address indexed token, address indexed sender, address indexed receiver, int96 flowRate, int256 totalSenderFlowRate, int256 totalReceiverFlowRate, bytes userData)",
-])
+  return {
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: CFAV1_ADDRESS,
+    data: operationData,
+  }
+}
 
-// ERC20 Token ABI for Super Tokens
-export const SUPER_TOKEN_ABI = parseAbi([
-  "function balanceOf(address account) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function transfer(address recipient, uint256 amount) returns (bool)",
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function totalSupply() view returns (uint256)",
-  
-  // Super Token specific
-  "function getUnderlyingToken() view returns (address)",
-  "function upgrade(uint256 amount) returns (bool)",
-  "function downgrade(uint256 amount) returns (bool)",
-  "function realtimeBalanceOf(address account, uint256 timestamp) view returns (int256 availableBalance, uint256 deposit, uint256 owedDeposit)",
-])
+/**
+ * Build updateFlow operation for batchCall
+ */
+export function buildUpdateFlowOperation(
+  token: Address,
+  receiver: Address,
+  flowRate: bigint
+): Operation {
+  const updateFlowCallData = encodeFunctionData({
+    abi: CFA_ABI,
+    functionName: "updateFlow",
+    args: [token, receiver, flowRate as any, "0x"],
+  })
 
-// Superfluid Host ABI
-export const HOST_ABI = parseAbi([
-  "function callAgreement(address agreementClass, bytes callData, bytes userData) returns (bytes returnedData)",
-  "function getAgreementClass(bytes32 agreementType) view returns (address agreementClass)",
-])
+  const operationData = encodeAbiParameters(
+    parseAbiParameters("bytes, bytes"),
+    [updateFlowCallData, "0x"]
+  )
+
+  return {
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: CFAV1_ADDRESS,
+    data: operationData,
+  }
+}
+
+/**
+ * Build deleteFlow operation for batchCall
+ */
+export function buildDeleteFlowOperation(
+  token: Address,
+  sender: Address,
+  receiver: Address
+): Operation {
+  const deleteFlowCallData = encodeFunctionData({
+    abi: CFA_ABI,
+    functionName: "deleteFlow",
+    args: [token, sender, receiver, "0x"],
+  })
+
+  const operationData = encodeAbiParameters(
+    parseAbiParameters("bytes, bytes"),
+    [deleteFlowCallData, "0x"]
+  )
+
+  return {
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: CFAV1_ADDRESS,
+    data: operationData,
+  }
+}
 
 export const ContractConfigs = {
   // Create a new payment stream
@@ -69,7 +123,7 @@ export const ContractConfigs = {
     flowRate: bigint,
     userData: `0x${string}` = "0x"
   ) => ({
-    address: SuperfluidContracts.cfaV1,
+    address: CFAV1_ADDRESS,
     abi: CFA_ABI,
     functionName: "createFlow",
     args: [token, receiver, flowRate, userData],
@@ -82,7 +136,7 @@ export const ContractConfigs = {
     flowRate: bigint,
     userData: `0x${string}` = "0x"
   ) => ({
-    address: SuperfluidContracts.cfaV1,
+    address: CFAV1_ADDRESS,
     abi: CFA_ABI,
     functionName: "updateFlow",
     args: [token, receiver, flowRate, userData],
@@ -95,7 +149,7 @@ export const ContractConfigs = {
     receiver: Address,
     userData: `0x${string}` = "0x"
   ) => ({
-    address: SuperfluidContracts.cfaV1,
+    address: CFAV1_ADDRESS,
     abi: CFA_ABI,
     functionName: "deleteFlow",
     args: [token, sender, receiver, userData],
@@ -103,23 +157,17 @@ export const ContractConfigs = {
 
   // Get flow details
   getFlow: (token: Address, sender: Address, receiver: Address) => ({
-    address: SuperfluidContracts.cfaV1,
+    address: CFAV1_ADDRESS,
     abi: CFA_ABI,
     functionName: "getFlow",
     args: [token, sender, receiver],
   }),
 }
 
-export const client = createPublicClient({
+export const publicClient = createPublicClient({
   chain: sepolia,
   transport: http(),
 })
-
-export const contracts = {
-  cfaV1: SuperfluidContracts.cfaV1,
-  host: SuperfluidContracts.host,
-  pyusdx: SuperfluidContracts.pyusdx,
-}
 
 // Utility function to calculate flow rate from annual salary
 export function calculateFlowRate(annualSalary: number): bigint {
