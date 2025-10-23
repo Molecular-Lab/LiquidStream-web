@@ -1,7 +1,8 @@
 import { QueryClient, useQuery } from "@tanstack/react-query"
-import { useAccount, useClient } from "wagmi"
+import { useAccount } from "wagmi"
 
-import { client, contracts, tokenAbi } from "@/lib/contract"
+import { client, contracts, SUPER_TOKEN_ABI } from "@/lib/contract"
+import { Address } from "viem"
 
 export const refreshTokenBalances = (queryClient: QueryClient) => {
   queryClient.invalidateQueries({
@@ -11,31 +12,28 @@ export const refreshTokenBalances = (queryClient: QueryClient) => {
 
 export const useTokenBalances = () => {
   const { address } = useAccount()
+  
   return useQuery({
     queryKey: ["token-balances", address],
     queryFn: async () => {
-      if (!address) return { usdc: 0, weth: 0 }
+      if (!address) return { pyusdx: 0 }
+      
       const results = await client.multicall({
         contracts: [
           {
-            abi: tokenAbi,
-            address: contracts.usdc,
-            functionName: "balanceOf",
-            args: [address],
-          },
-          {
-            abi: tokenAbi,
-            address: contracts.weth,
+            abi: SUPER_TOKEN_ABI,
+            address: contracts.pyusdx,
             functionName: "balanceOf",
             args: [address],
           },
         ],
       })
+      
       return {
-        usdc: Number(results[0].result) / 1e6,
-        weth: Number(results[1].result) / 1e6,
+        pyusdx: results[0].result ? Number(results[0].result) / 1e18 : 0,
       }
     },
-    refetchInterval: 1000 * 30, // 30 seconds
+    enabled: !!address,
+    refetchInterval: 1000 * 10, // 10 seconds
   })
 }

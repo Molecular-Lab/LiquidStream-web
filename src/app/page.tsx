@@ -1,264 +1,90 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
+import { useState } from "react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { LatLngExpression } from "leaflet"
-import { toast } from "sonner"
-import { bytesToHex } from "viem"
-import {
-  useAccount,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from "wagmi"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import PopoverDatePicker from "@/components/popover-date-picker"
-import { useLocationStore } from "@/store/location"
-import { useProofStore } from "@/store/proof"
-import { GenerateProof } from "@/utils/generating-proof"
-import {latLngToXY} from "@/utils/lat-long-conversion"
-import YouTubeBackgroundMusic from "@/components/background-music";
-
-import { ContractConfigs } from "../lib/contract"
-import { se } from "date-fns/locale"
-
-const MapContainer = dynamic(() => import("@/components/map/map-container"), {
-  loading: () => <div>Loading map...</div>,
-  ssr: false,
-})
+import { DashboardStats } from "@/components/dashboard/dashboard-stats"
+import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
+import { EmployeeList } from "@/components/employees/employee-list"
+import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useDeleteStream } from "@/hooks/use-streams"
+import { Employee } from "@/store/employees"
+import { useStreamStore } from "@/store/streams"
 
 export default function Home() {
-  const selectedLocation = useLocationStore((state) => state.selectedLocation)
-  const [radius, setRadius] = useState<number | undefined>(1) // Default radius in km
-  const [markedPosition, setMarkedPosition] = useState<
-    LatLngExpression | undefined
-  >()
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [streamDialogOpen, setStreamDialogOpen] = useState(false)
+  const streams = useStreamStore((state) => state.streams)
+  const { mutate: deleteStream } = useDeleteStream()
 
-  // Zustand store
-  const {
-    proof,
-    publicInputs,
-    isGenerating,
-    isVerifying,
-    isVerified,
-    transactionHash,
-    setProof,
-    clearProof,
-    setGenerating,
-    setVerifying,
-    setVerified,
-    resetVerification,
-  } = useProofStore()
-
-  // Wagmi hooks
-  const { isConnected } = useAccount()
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  })
-
-  const handleGenProof = async () => {
-    if (!markedPosition || !radius || radius <= 0) return
-
-    try {
-      setGenerating(true)
-      console.log("Radius:", radius)
-      console.log("Marked Position:", markedPosition)
-      let position_x = 0
-      let position_y = 0
-      const { x: target_x, y: target_y } = latLngToXY(markedPosition[0], markedPosition[1], selectedLocation[0], selectedLocation[1])
-      console.log("Selected Location:", selectedLocation)
-      console.log(Math.sqrt(Math.pow((target_x - position_x), 2) + Math.pow((target_y - position_y), 2)))
-      console.log("Target Position:", { target_x: Math.floor(target_x * 1000).toString(), target_y: Math.floor(target_y * 1000).toString() , radius: Math.floor(radius * Math.pow(1000, 2)).toString()})
-      const { proof: generatedProof, publicInputs: generatedPublicInputs } =
-        await GenerateProof({
-          position_x: "0",
-          position_y: "0",
-          radius: Math.floor(radius * Math.pow(1000, 2)).toString(),
-          target_x: Math.abs(Math.floor(target_x * 1000)).toString(),
-          target_y: Math.abs(Math.floor(target_y * 1000)).toString(),
-        })
-
-      setProof(generatedProof, generatedPublicInputs)
-      toast.success("Proof generated successfully!")
-    } catch (error) {
-      console.error("Error generating proof:", error)
-      toast.error("Failed to generate proof")
-    } finally {
-      setGenerating(false)
-    }
+  const handleStartStream = (employee: Employee) => {
+    setSelectedEmployee(employee)
+    setStreamDialogOpen(true)
   }
 
-  const handleVerifyMia = () => {
-    if (!isConnected) {
-      toast.error("Please connect your wallet first")
-      return
-    }
-
-    if (!proof || !publicInputs) {
-      toast.error("Please generate proof first")
-      return
-    }
-
-    setVerifying(true)
-
-    // Convert proof to hex string
-    const proofHex = bytesToHex(proof)
-
-    // Convert publicInputs to bytes32 array
-    const publicInputsBytes32 = publicInputs as `0x${string}`[]
-
-    // Example key - you'll need to provide the actual key for your use case
-    const key =
-      "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as `0x${string}`
-    console.log("proof: ", proofHex, publicInputsBytes32)
-    writeContract(
-      ContractConfigs.verifyMia(key, proofHex, publicInputsBytes32)
+  const handleStopStream = (employeeId: string) => {
+    const stream = streams.find(
+      (s) => s.employeeId === employeeId && s.status === "active"
     )
-  }
 
-  // Handle transaction confirmation
-  useEffect(() => {
-    if (isConfirming) {
-      toast.loading("Confirming transaction...")
+    if (stream) {
+      deleteStream({
+        token: stream.token,
+        receiver: stream.employeeAddress,
+        streamId: stream.id,
+      })
     }
-    if (isSuccess && hash) {
-      toast.dismiss()
-      setVerified(true, hash)
-      setVerifying(false)
-      toast.success(
-        <div className="flex flex-col gap-2">
-          <span>Proof verified on-chain successfully!</span>
-          <a
-            href={`https://sepolia.etherscan.io/tx/${hash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline text-sm"
-          >
-            View on Etherscan →
-          </a>
-        </div>,
-        { duration: 8000 }
-      )
-    }
-  }, [isConfirming, isSuccess, hash, setVerified, setVerifying])
-
-  // Handle errors from useWriteContract
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to verify proof")
-      console.error("Error verifying proof:", error)
-      setVerifying(false)
-    }
-  }, [error, setVerifying])
-
-  // Clear proof when markedPosition changes
-  useEffect(() => {
-    if (markedPosition && (proof || publicInputs)) {
-      clearProof()
-      toast.info("Position changed - proof cleared")
-    }
-  }, [markedPosition, proof, publicInputs, clearProof])
-
-  const handleRemoveMarkedPosition = () => {
-    setMarkedPosition(undefined)
   }
 
   return (
-    <main className="container flex h-screen flex-col space-y-6 p-6">
-      <YouTubeBackgroundMusic />
-      <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-        <div className="flex gap-3">
-          <Label>Date</Label>
-          <PopoverDatePicker />
+    <main className="container mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
+            LiquidStream
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Powered by PayPal USD - Stream payroll in real-time
+          </p>
         </div>
-
-        <div className="flex gap-3">
-          <Label htmlFor="radius">Radius</Label>
-          <Input
-            id="radius"
-            type="number"
-            step="any"
-            placeholder="Radius (km)"
-            value={isNaN(radius) ? "" : radius}
-            min={0}
-            onChange={(e) => setRadius(parseFloat(e.target.value))}
-          />
-        </div>
-
-        <Button onClick={handleRemoveMarkedPosition} disabled={!markedPosition}>
-          Remove Marked Position
-        </Button>
-      </div>
-
-      <div className="relative z-0 flex flex-1">
-        <MapContainer
-          center={selectedLocation}
-          zoom={15}
-          markedPosition={markedPosition}
-          onMarkPositionChange={setMarkedPosition}
-          radius={radius}
-        />
-      </div>
-
-      <div className="flex justify-center gap-4">
-        {!proof ? (
-          <Button
-            onClick={handleGenProof}
-            disabled={!markedPosition || !radius || radius <= 0 || isGenerating}
-          >
-            {isGenerating ? "Generating..." : "Gen Proof"}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleVerifyMia}
-            disabled={
-              !isConnected ||
-              isVerifying ||
-              isPending ||
-              isConfirming ||
-              isVerified
-            }
-            variant={isVerified ? "default" : "secondary"}
-          >
-            {isVerifying || isPending
-              ? "Verifying..."
-              : isConfirming
-                ? "Confirming..."
-                : isVerified
-                  ? "✓ Verified"
-                  : "Verify On-Chain"}
-          </Button>
-        )}
-
         <ConnectButton />
       </div>
 
-      {/* {proof && publicInputs && (
-        <div className="flex flex-col gap-4 p-4 border rounded-lg">
-          <div className="text-sm font-medium">Generated Proof:</div>
-          <div className="text-xs break-all bg-gray-100 p-2 rounded">
-            {bytesToHex(proof)}
-          </div>
-          
-          <div className="text-sm font-medium">Public Inputs:</div>
-          <div className="text-xs break-all bg-gray-100 p-2 rounded">
-            {JSON.stringify(publicInputs as `0x${string}`[])}
-          </div>
+      {/* Stats */}
+      <DashboardStats />
 
-          {isVerified && transactionHash && (
-            <div className="flex flex-col gap-2 p-3 bg-green-50 rounded border border-green-200">
-              <div className="text-sm font-medium text-green-800">✓ Verification Complete!</div>
-              <div className="text-xs text-green-600">
-                Transaction: {transactionHash}
-              </div>
+      {/* Employee Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Employees</CardTitle>
+              <CardDescription>
+                Manage your team members and their payment streams
+              </CardDescription>
             </div>
-          )}
-        </div>
-      )} */}
+            <AddEmployeeDialog />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <EmployeeList
+            onStartStream={handleStartStream}
+            onStopStream={handleStopStream}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Start Stream Dialog */}
+      <StartStreamDialog
+        employee={selectedEmployee}
+        open={streamDialogOpen}
+        onClose={() => {
+          setStreamDialogOpen(false)
+          setSelectedEmployee(null)
+        }}
+      />
     </main>
   )
 }

@@ -98,9 +98,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           <Toaster />
         </ThemeProvider>
       </body>
-      {env.NEXT_PUBLIC_GA_ID && (
+      {/* {env.NEXT_PUBLIC_GA_ID && (
         <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
-      )}
+      )} */}
       <Analytics />
     </html>
   )
