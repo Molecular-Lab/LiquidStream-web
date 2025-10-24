@@ -99,7 +99,7 @@ export function UpgradeDowngradeCard() {
 
         // Create upgrade transaction proposal
         const upgradeAmount = amountInUnits * BigInt(10 ** 12) // Convert 6 to 18 decimals
-        
+
         console.log("Creating Safe upgrade transaction:", {
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,
@@ -108,7 +108,7 @@ export function UpgradeDowngradeCard() {
           originalAmount: amount,
           amountInUnits: amountInUnits.toString()
         })
-        
+
         createSafeTokenTransaction({
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,

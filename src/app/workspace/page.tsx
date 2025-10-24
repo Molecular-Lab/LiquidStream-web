@@ -72,7 +72,7 @@ export default function WorkspaceHub() {
                     Low Gas Fees
                   </Badge>
                 </div>
-                
+
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
                     Perfect for:
@@ -122,7 +122,7 @@ export default function WorkspaceHub() {
                     </Badge>
                   )}
                 </div>
-                
+
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
                     Perfect for:

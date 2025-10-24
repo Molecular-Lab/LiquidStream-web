@@ -130,8 +130,8 @@ export const useSafeTokenOperations = () => {
             queryClient.invalidateQueries({ queryKey: ["pending-transactions"] })
 
             const operationName = variables.operation === 'upgrade' ? 'Upgrade' : 'Downgrade'
-            const tokenInfo = variables.operation === 'upgrade' 
-                ? `${variables.tokenSymbol} → ${variables.tokenSymbol}x` 
+            const tokenInfo = variables.operation === 'upgrade'
+                ? `${variables.tokenSymbol} → ${variables.tokenSymbol}x`
                 : `${variables.tokenSymbol} → ${variables.tokenSymbol.replace('x', '')}`
 
             toast.success(`${operationName} proposal created! 🎉`, {
@@ -156,7 +156,7 @@ export const useSafeTokenOperations = () => {
         onError: (error: Error, variables) => {
             console.error(`Token ${variables.operation} error:`, error)
             toast.error(`Failed to ${variables.operation} token`, {
-                description: error.message.includes('EthersAdapter') 
+                description: error.message.includes('EthersAdapter')
                     ? 'Safe SDK initialization failed. Please try again.'
                     : error.message,
             })
@@ -308,18 +308,18 @@ export const useSignSafeTransaction = () => {
             // Instead of signing here, redirect to Safe interface
             // In a real implementation, this would integrate with Safe's signing API
             const safeAppUrl = `https://app.safe.global/transactions/queue?safe=${safeConfig.address}`
-            
+
             // Open Safe app for signing
             window.open(safeAppUrl, '_blank')
-            
+
             // For demo purposes, simulate adding signature after user returns
             // In real implementation, this would be handled by Safe API webhooks
             toast.info("Redirecting to Safe interface for signing...", {
                 description: "Sign the transaction in the Safe app, then return here."
             })
 
-            return { 
-                transactionId, 
+            return {
+                transactionId,
                 signature: "pending_safe_signature",
                 safeTransactionHash: pendingTx.safeTransactionHash,
                 requiresSafeInterface: true
@@ -372,7 +372,7 @@ export const useExecuteSafeTransaction = () => {
             // Redirect to Safe interface for execution
             const safeAppUrl = `https://app.safe.global/transactions/queue?safe=${safeConfig.address}`
             window.open(safeAppUrl, '_blank')
-            
+
             toast.info("Redirecting to Safe interface for execution...", {
                 description: "Execute the transaction in the Safe app when threshold is met."
             })
@@ -387,7 +387,7 @@ export const useExecuteSafeTransaction = () => {
             // Invalidate relevant queries
             queryClient.invalidateQueries({ queryKey: ["streams"] })
             queryClient.invalidateQueries({ queryKey: ["token-balances"] })
-            
+
             if (result.requiresSafeInterface) {
                 toast.success("Safe interface opened!", {
                     description: "Complete the execution in the Safe app when threshold is met.",
