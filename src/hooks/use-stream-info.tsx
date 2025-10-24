@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Address, formatEther } from "viem"
 import { usePublicClient, useAccount } from "wagmi"
 import { readContract } from "wagmi/actions"
 
 import { CFAV1_ADDRESS, PYUSDX_ADDRESS, CFA_ABI, SUPER_TOKEN_ABI } from "@/lib/contract"
 import { config } from "@/config/wallet"
+import { useSafeConfig } from "@/store/safe"
 import { FileWarningIcon } from "lucide-react"
 
 export interface StreamInfo {
@@ -33,88 +35,47 @@ export interface RealtimeBalance {
  * Hook to get stream info between sender and receiver (database-less)
  * Reads directly from Superfluid CFA contract
  */
-export function useStreamInfo(
-  token: Address = PYUSDX_ADDRESS,
-  sender?: Address,
-  receiver?: Address
-) {
+export const useStreamInfo = (token: Address, sender?: Address, receiver?: Address) => {
+  const { address } = useAccount()
+  const { safeConfig } = useSafeConfig()
   const publicClient = usePublicClient()
-  const { address: connectedAddress } = useAccount()
-  const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  // Use connected address as sender if not provided
-  const effectiveSender = sender || connectedAddress
+  // Use Safe address if configured, otherwise use connected wallet address
+  const senderAddress = sender || safeConfig?.address || address
+  const receiverAddress = receiver
 
-  useEffect(() => {
-    if (!publicClient || !effectiveSender || !receiver) {
-      setStreamInfo(null)
-      return
-    }
-
-    let mounted = true
-
-    async function fetchStreamInfo() {
-      setLoading(true)
-      setError(null)
+  return useQuery({
+    queryKey: ["streamInfo", token, senderAddress, receiverAddress],
+    queryFn: async () => {
+      if (!publicClient || !senderAddress || !receiverAddress) {
+        return null
+      }
 
       try {
-        // Get flow info: [timestamp, flowRate, deposit, owedDeposit]
-        const flowInfo = (await readContract(config, {
+        const result = await publicClient.readContract({
           address: CFAV1_ADDRESS,
           abi: CFA_ABI,
           functionName: "getFlow",
-          args: [token, effectiveSender!, receiver!],
-        })) as [bigint, bigint, bigint, bigint]
+          args: [token, senderAddress, receiverAddress],
+        })
 
-        if (!mounted) return
+        const [timestamp, flowRate, deposit, owedDeposit] = result as [bigint, bigint, bigint, bigint]
 
-        const timestamp = flowInfo[0]
-        const flowRate = flowInfo[1]
-        const deposit = flowInfo[2]
-        const owedDeposit = flowInfo[3]
-
-        const isActive = flowRate > BigInt(0)
-
-        // Calculate flows using precise time calculations matching Superfluid
-        const perSecond = flowRate
-        const perDay = flowRate * BigInt(86400)       // 24 * 60 * 60
-        const perMonth = flowRate * BigInt(2629800)   // 365.25 / 12 * 24 * 60 * 60 = 30.4375 days
-        const perYear = flowRate * BigInt(31557600)   // 365.25 * 24 * 60 * 60
-
-        setStreamInfo({
+        return {
           timestamp,
           flowRate,
           deposit,
           owedDeposit,
-          perSecond,
-          perDay,
-          perMonth,
-          perYear,
-          isActive,
-        })
-      } catch (err: any) {
-        if (mounted) {
-          console.error("Error fetching stream info:", err)
-          setError(err.message || "Failed to fetch stream info")
-          setStreamInfo(null)
+          isActive: flowRate > 0n,
         }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+      } catch (error) {
+        console.error("Error fetching stream info:", error)
+        return null
       }
-    }
-
-    fetchStreamInfo()
-
-    return () => {
-      mounted = false
-    }
-  }, [publicClient, token, effectiveSender, receiver])
-
-  return { streamInfo, loading, error, refetch: () => {} }
+    },
+    enabled: !!publicClient && !!senderAddress && !!receiverAddress,
+    refetchInterval: 10000, // Refetch every 10 seconds
+  })
 }
 
 /**
@@ -257,7 +218,7 @@ export function useIncomingStreams(
 export function formatFlowRate(flowRate: bigint | string, decimals: number = 18) {
   // Convert string to bigint if needed
   const rate = typeof flowRate === 'string' ? BigInt(flowRate) : flowRate
-  
+
   // Use precise time calculations matching Superfluid
   const secondsPerDay = 86400n      // 24 * 60 * 60
   const secondsPerYear = 31557600n  // 365.25 * 24 * 60 * 60

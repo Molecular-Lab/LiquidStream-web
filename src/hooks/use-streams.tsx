@@ -3,9 +3,9 @@ import { toast } from "sonner"
 import { Address } from "viem"
 import { useAccount, usePublicClient, useWriteContract } from "wagmi"
 
-import { 
-  CFA_ABI, 
-  HOST_ADDRESS, 
+import {
+  CFA_ABI,
+  HOST_ADDRESS,
   HOST_ABI,
   buildCreateFlowOperation,
   buildUpdateFlowOperation,
@@ -13,15 +13,19 @@ import {
   CFAV1_ADDRESS,
 } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
+import { useSafeConfig } from "@/store/safe"
+import { useSafeStreamOperations } from "@/hooks/use-safe-operations"
 
 /**
- * Hook to create a new payment stream using Superfluid batchCall
+ * Hook to create a new payment stream using Safe multisig or direct wallet
  */
 export const useCreateStream = () => {
   const { writeContractAsync } = useWriteContract()
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const addStream = useStreamStore((state) => state.addStream)
+  const { safeConfig } = useSafeConfig()
+  const { mutate: createSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
@@ -41,35 +45,73 @@ export const useCreateStream = () => {
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      // Build createFlow operation
-      const operation = buildCreateFlowOperation(token, receiver, flowRate)
+      // Use Safe multisig if configured, otherwise use direct wallet
+      if (safeConfig?.address) {
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          createSafeStream(
+            {
+              operation: 'create',
+              token,
+              receiver,
+              flowRate,
+              employeeId,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Add to local store
+                addStream({
+                  employeeId,
+                  employeeName,
+                  employeeAddress: receiver,
+                  token,
+                  tokenSymbol,
+                  flowRate: flowRate.toString(),
+                  startTime: Date.now(),
+                  status: "active",
+                })
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
+        })
+        return "safe-transaction" // Return placeholder since Safe handles the actual hash
+      } else {
+        // Direct wallet transaction (fallback)
+        const operation = buildCreateFlowOperation(token, receiver, flowRate)
+        const hash = await writeContractAsync({
+          address: HOST_ADDRESS,
+          abi: HOST_ABI,
+          functionName: "batchCall",
+          args: [[operation]],
+        } as any)
 
-      // Execute batchCall on Superfluid Host
-      const hash = await writeContractAsync({
-        address: HOST_ADDRESS,
-        abi: HOST_ABI,
-        functionName: "batchCall",
-        args: [[operation]],
-      } as any)
+        // Add to local store
+        addStream({
+          employeeId,
+          employeeName,
+          employeeAddress: receiver,
+          token,
+          tokenSymbol,
+          flowRate: flowRate.toString(),
+          startTime: Date.now(),
+          status: "active",
+        })
 
-      // Add to local store
-      addStream({
-        employeeId,
-        employeeName,
-        employeeAddress: receiver,
-        token,
-        tokenSymbol,
-        flowRate: flowRate.toString(),
-        startTime: Date.now(),
-        status: "active",
-      })
-
-      return hash
+        return hash
+      }
     },
-    onSuccess: (hash) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
+      if (result === "safe-transaction") {
+        // Safe operation success is handled by useSafeStreamOperations
+        return
+      }
       toast.success("Payment stream created successfully!", {
-        description: `Transaction hash: ${hash.slice(0, 10)}...`,
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
       })
     },
     onError: (error: Error) => {
@@ -81,13 +123,15 @@ export const useCreateStream = () => {
 }
 
 /**
- * Hook to update an existing payment stream using batchCall
+ * Hook to update an existing payment stream using Safe multisig or direct wallet
  */
 export const useUpdateStream = () => {
   const { writeContractAsync } = useWriteContract()
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const updateStream = useStreamStore((state) => state.updateStream)
+  const { safeConfig } = useSafeConfig()
+  const { mutate: updateSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
@@ -95,37 +139,71 @@ export const useUpdateStream = () => {
       receiver,
       newFlowRate,
       streamId,
+      employeeName,
+      tokenSymbol,
     }: {
       token: Address
       receiver: Address
       newFlowRate: bigint
       streamId: string
+      employeeName?: string
+      tokenSymbol?: string
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      // Build updateFlow operation
-      const operation = buildUpdateFlowOperation(token, receiver, newFlowRate)
+      // Use Safe multisig if configured, otherwise use direct wallet
+      if (safeConfig?.address) {
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          updateSafeStream(
+            {
+              operation: 'update',
+              token,
+              receiver,
+              flowRate: newFlowRate,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Update local store
+                updateStream(streamId, {
+                  flowRate: newFlowRate.toString(),
+                  status: "active",
+                })
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
+        })
+        return "safe-transaction"
+      } else {
+        // Direct wallet transaction (fallback)
+        const operation = buildUpdateFlowOperation(token, receiver, newFlowRate)
+        const hash = await writeContractAsync({
+          address: HOST_ADDRESS,
+          abi: HOST_ABI,
+          functionName: "batchCall",
+          args: [[operation]],
+        } as any)
 
-      // Execute batchCall
-      const hash = await writeContractAsync({
-        address: HOST_ADDRESS,
-        abi: HOST_ABI,
-        functionName: "batchCall",
-        args: [[operation]],
-      } as any)
+        // Update local store
+        updateStream(streamId, {
+          flowRate: newFlowRate.toString(),
+          status: "active",
+        })
 
-      // Update local store
-      updateStream(streamId, {
-        flowRate: newFlowRate.toString(),
-        status: "active",
-      })
-
-      return hash
+        return hash
+      }
     },
-    onSuccess: (hash) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
+      if (result === "safe-transaction") {
+        return
+      }
       toast.success("Stream updated successfully!", {
-        description: `Transaction hash: ${hash.slice(0, 10)}...`,
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
       })
     },
     onError: (error: Error) => {
@@ -137,46 +215,78 @@ export const useUpdateStream = () => {
 }
 
 /**
- * Hook to delete/stop a payment stream using batchCall
+ * Hook to delete/stop a payment stream using Safe multisig or direct wallet
  */
 export const useDeleteStream = () => {
   const { writeContractAsync } = useWriteContract()
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const endStream = useStreamStore((state) => state.endStream)
+  const { safeConfig } = useSafeConfig()
+  const { mutate: deleteSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
       token,
       receiver,
       streamId,
+      employeeName,
+      tokenSymbol,
     }: {
       token: Address
       receiver: Address
       streamId: string
+      employeeName?: string
+      tokenSymbol?: string
     }) => {
       if (!address) throw new Error("Wallet not connected")
 
-      // Build deleteFlow operation
-      const operation = buildDeleteFlowOperation(token, address, receiver)
+      // Use Safe multisig if configured, otherwise use direct wallet
+      if (safeConfig?.address) {
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          deleteSafeStream(
+            {
+              operation: 'delete',
+              token,
+              receiver,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Update local store
+                endStream(streamId)
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
+        })
+        return "safe-transaction"
+      } else {
+        // Direct wallet transaction (fallback)
+        const operation = buildDeleteFlowOperation(token, address, receiver)
+        const hash = await writeContractAsync({
+          address: HOST_ADDRESS,
+          abi: HOST_ABI,
+          functionName: "batchCall",
+          args: [[operation]],
+        } as any)
 
-      // Execute batchCall
-      const hash = await writeContractAsync({
-        address: HOST_ADDRESS,
-        abi: HOST_ABI,
-        functionName: "batchCall",
-        args: [[operation]],
-      } as any)
+        // Update local store
+        endStream(streamId)
 
-      // Update local store
-      endStream(streamId)
-
-      return hash
+        return hash
+      }
     },
-    onSuccess: (hash) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
+      if (result === "safe-transaction") {
+        return
+      }
       toast.success("Stream stopped successfully!", {
-        description: `Transaction hash: ${hash.slice(0, 10)}...`,
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
       })
     },
     onError: (error: Error) => {

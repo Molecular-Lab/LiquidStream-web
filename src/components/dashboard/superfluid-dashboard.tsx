@@ -3,18 +3,26 @@
 import { useEffect, useState } from "react"
 import { Address, formatEther } from "viem"
 import { useAccount } from "wagmi"
-import { Activity, ArrowDownIcon, ArrowUpIcon, TrendingDown, TrendingUp } from "lucide-react"
+import { Activity, ArrowDownIcon, ArrowUpIcon, TrendingDown, TrendingUp, Shield, AlertTriangle } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useRealtimeBalance, useIncomingStreams, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
+import { useSafeConfig } from "@/store/safe"
 import { Separator } from "@/components/ui/separator"
 
 export function SuperfluidDashboard() {
   const { address } = useAccount()
-  const { balance, loading: balanceLoading } = useRealtimeBalance(PYUSDX_ADDRESS, address)
-  const { netFlowRate, loading: flowLoading } = useIncomingStreams(PYUSDX_ADDRESS, address)
+  const { safeConfig } = useSafeConfig()
+
+  // Use Safe address if configured, otherwise use connected wallet
+  const activeAddress = safeConfig?.address || address
+  const isSafeConfigured = !!safeConfig?.address
+
+  const { balance, loading: balanceLoading } = useRealtimeBalance(PYUSDX_ADDRESS, activeAddress)
+  const { netFlowRate, loading: flowLoading } = useIncomingStreams(PYUSDX_ADDRESS, activeAddress)
   const streams = useStreamStore((state) => state.streams)
   const [currentBalance, setCurrentBalance] = useState("0")
 
@@ -86,7 +94,20 @@ export function SuperfluidDashboard() {
         {/* Balance Card */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardDescription className="text-xs">Balance</CardDescription>
+            <CardDescription className="text-xs flex items-center gap-2">
+              Balance
+              {isSafeConfigured ? (
+                <Badge variant="secondary" className="text-xs">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Safe Protected
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Direct Wallet
+                </Badge>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -95,6 +116,11 @@ export function SuperfluidDashboard() {
                   {balanceLoading ? "..." : currentBalance || formattedBalance}
                 </div>
                 <div className="text-sm text-muted-foreground">PYUSDx</div>
+                {isSafeConfigured && (
+                  <div className="text-xs text-muted-foreground mt-1 font-mono">
+                    {safeConfig.address?.slice(0, 10)}...{safeConfig.address?.slice(-6)}
+                  </div>
+                )}
               </div>
 
               {(isStreamingOut || isStreamingIn) && (
