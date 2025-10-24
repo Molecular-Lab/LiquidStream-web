@@ -31,7 +31,6 @@ export interface SafeConfig {
   createdAt: string
   createdBy: string // Owner address
   workspaceName?: string
-  isDeployed?: boolean // Track if Safe contract is actually deployed on-chain
 }
 
 interface SafeStore {
@@ -42,7 +41,7 @@ interface SafeStore {
   setSafeConfig: (config: SafeConfig) => void
   clearSafeConfig: () => void
   
-  // Transaction management (for UI/demo purposes)
+  // Transaction management
   addPendingTransaction: (tx: Omit<PendingTransaction, "id" | "createdAt">) => void
   signTransaction: (txId: string, signerAddress: string) => void
   executeTransaction: (txId: string) => void
@@ -54,8 +53,7 @@ interface SafeStore {
   getPendingForSigner: (address: string) => PendingTransaction[]
 }
 
-// Renamed from useSafe to avoid conflict with @safe-global/safe-react-hooks
-export const useSafeConfig = create<SafeStore>()(
+export const useSafe = create<SafeStore>()(
   persist(
     (set, get) => ({
       safeConfig: null,
@@ -63,17 +61,13 @@ export const useSafeConfig = create<SafeStore>()(
 
       setSafeConfig: (config) => {
         set({ safeConfig: config })
-        // Only save to sessionStorage on client side
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem("safe_config", JSON.stringify(config))
-        }
+        // Also save to sessionStorage
+        sessionStorage.setItem("safe_config", JSON.stringify(config))
       },
 
       clearSafeConfig: () => {
         set({ safeConfig: null, pendingTransactions: [] })
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem("safe_config")
-        }
+        sessionStorage.removeItem("safe_config")
       },
 
       addPendingTransaction: (tx) => {
