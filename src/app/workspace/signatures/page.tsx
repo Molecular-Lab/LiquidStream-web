@@ -10,14 +10,14 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useSafe } from "@/store/safe"
+import { useSafeConfig } from "@/store/safe"
 
 export default function SignaturesPage() {
   const { address } = useAccount()
   const searchParams = useSearchParams()
   const highlightTxId = searchParams.get("highlight")
   
-  const { pendingTransactions, signTransaction, executeTransaction, getSignerInfo } = useSafe()
+  const { pendingTransactions, signTransaction, executeTransaction, getSignerInfo } = useSafeConfig()
   const [isSigning, setIsSigning] = useState<string | null>(null)
 
   const handleSign = async (txId: string) => {

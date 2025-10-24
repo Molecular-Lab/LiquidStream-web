@@ -9,12 +9,12 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useSafe } from "@/store/safe"
+import { useSafeConfig } from "@/store/safe"
 
 export default function SignerDashboardPage() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
-  const { safeConfig, pendingTransactions, isSigner, getSignerInfo, getPendingForSigner } = useSafe()
+  const { safeConfig, pendingTransactions, isSigner, getSignerInfo, getPendingForSigner } = useSafeConfig()
   
   const [isSignerUser, setIsSignerUser] = useState(false)
   const [signerInfo, setSignerInfo] = useState<any>(null)
