@@ -65,12 +65,18 @@ importers:
       '@rainbow-me/rainbowkit':
         specifier: ^2.2.4
         version: 2.2.4(@tanstack/react-query@5.75.7(react@19.1.0))(@types/react@19.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(viem@2.29.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2))(wagmi@2.15.2(@tanstack/query-core@5.75.7)(@tanstack/react-query@5.75.7(react@19.1.0))(@types/react@19.1.0)(bufferutil@4.0.9)(react@19.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)(viem@2.29.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2))(zod@3.24.2))
+      '@safe-global/api-kit':
+        specifier: ^4.0.0
+        version: 4.0.0(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
       '@safe-global/protocol-kit':
         specifier: ^6.1.1
         version: 6.1.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
       '@safe-global/safe-react-hooks':
         specifier: ^0.3.0
         version: 0.3.0(@tanstack/query-core@5.75.7)(@tanstack/react-query@5.75.7(react@19.1.0))(@types/react@19.1.0)(bufferutil@4.0.9)(react@19.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
+      '@safe-global/types-kit':
+        specifier: ^3.0.0
+        version: 3.0.0(typescript@5.8.2)(zod@3.24.2)
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
@@ -1553,6 +1559,9 @@ packages:
 
   '@safe-global/api-kit@3.0.2':
     resolution: {integrity: sha512-+DQm88HRe4bDOHsvi/9HKT3foXe1aS1iOKyu2yAqnJOAXURtdjhYmsMHzsseA/3qzlepC9SdC/ZBwr2Do0vzgQ==}
+
+  '@safe-global/api-kit@4.0.0':
+    resolution: {integrity: sha512-xtLLi6OXguLw8cLoYnzCxqmirzRK4sSORxaiBDXdxJfBXIZLLKvYwQyDjsPL+2W4jKlJVcSLCw5EfolJahNMYg==}
 
   '@safe-global/protocol-kit@6.1.1':
     resolution: {integrity: sha512-SlRosKB52h1CV2gMlKG4UOvh2j4tXuzz1GZ/yQ1HD0Zvm5azUlaytFwKzHun9xNVvfe+vvSNHUEGX2Umy+rQ9A==}
@@ -5889,6 +5898,19 @@ snapshots:
     dependencies:
       '@safe-global/protocol-kit': 6.1.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
       '@safe-global/types-kit': 2.0.1(typescript@5.8.2)(zod@3.24.2)
+      node-fetch: 2.7.0
+      viem: 2.29.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - typescript
+      - utf-8-validate
+      - zod
+
+  '@safe-global/api-kit@4.0.0(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)':
+    dependencies:
+      '@safe-global/protocol-kit': 6.1.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
+      '@safe-global/types-kit': 3.0.0(typescript@5.8.2)(zod@3.24.2)
       node-fetch: 2.7.0
       viem: 2.29.1(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
     transitivePeerDependencies:
