@@ -102,7 +102,7 @@ export const useCreateStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-      
+
       // Check if result is from Safe Apps SDK (has safeTxHash)
       if (typeof result === 'object' && 'safeTxHash' in result) {
         toast.success("Stream transaction created in Safe!", {
@@ -199,7 +199,7 @@ export const useUpdateStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-      
+
       // Check if result is from Safe Apps SDK (has safeTxHash)
       if (typeof result === 'object' && 'safeTxHash' in result) {
         toast.success("Stream update transaction created in Safe!", {
@@ -287,7 +287,7 @@ export const useDeleteStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-      
+
       // Check if result is from Safe Apps SDK (has safeTxHash)
       if (typeof result === 'object' && 'safeTxHash' in result) {
         toast.success("Stream stop transaction created in Safe!", {

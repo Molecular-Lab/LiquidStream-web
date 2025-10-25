@@ -110,9 +110,9 @@ export function StartStreamDialog({
         onSuccess: (txHash) => {
           // Store stream details and show status dialog
           // Handle both string hash (direct wallet) and Safe Apps SDK response
-          const hashString = typeof txHash === 'string' ? txHash : 
-                            (typeof txHash === 'object' && 'safeTxHash' in txHash) ? txHash.safeTxHash : ""
-          
+          const hashString = typeof txHash === 'string' ? txHash :
+            (typeof txHash === 'object' && 'safeTxHash' in txHash) ? txHash.safeTxHash : ""
+
           setStreamDetails({
             flowRate,
             tokenSymbol: token.symbol,
