@@ -1,0 +1,13 @@
+{
+  "name": "SafeStream",
+  "description": "Superfluid-powered payment streaming for Safe multisig wallets",
+  "iconPath": "paypal-usd-pyusd-logo.png",
+  "providedBy": {
+    "name": "SafeStream Team",
+    "url": "https://safestream.vercel.app"
+  },
+  "safeAppsPermissions": [
+    "camera",
+    "microphone"
+  ]
+}

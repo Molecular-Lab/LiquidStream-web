@@ -55,7 +55,7 @@ export default function SetupSafePage() {
   const { sendTransaction } = useSendTransaction()
   const { registration: workspaceData, getOperators } = useWorkspace()
   const { setSafeConfig } = useSafeConfig()
-  
+
   const [isCreating, setIsCreating] = useState(false)
   const [safeCreated, setSafeCreated] = useState(false)
   const [safeAddress, setSafeAddress] = useState("")
@@ -74,7 +74,7 @@ export default function SetupSafePage() {
     if (workspaceData) {
       const operators = getOperators()
       setAvailableOperators(operators)
-      
+
       if (operators.length > 0) {
         toast.success(`Loaded ${operators.length} operators from workspace`)
       }
@@ -107,13 +107,13 @@ export default function SetupSafePage() {
     }
 
     setSigners([...signers, newSigner])
-    
+
     // Auto-adjust threshold
     const newSignerCount = signers.length + 1
     if (threshold === 1 && newSignerCount > 1) {
       setThreshold(2) // Recommend at least 2 signatures
     }
-    
+
     toast.success(`Added ${operator.name} as signer`)
   }
 
@@ -190,24 +190,24 @@ export default function SetupSafePage() {
 
       // Get the predicted Safe address
       const predictedAddress = await protocolKit.getAddress()
-      
+
       console.log("🔐 Safe Wallet Address:", predictedAddress)
       console.log("📋 Owners:", signers.map(s => s.address))
       console.log("🔢 Threshold:", threshold)
-      
+
       toast.info(`Safe address: ${predictedAddress.slice(0, 10)}... Deploying contract...`)
 
       // Check if Safe is already deployed
       const isDeployed = await protocolKit.isSafeDeployed()
-      
+
       let finalDeploymentStatus = isDeployed
-      
+
       if (!isDeployed) {
         // Deploy the Safe
         const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction()
-        
+
         toast.info("Deploying Safe contract...")
-        
+
         // Execute deployment transaction using wagmi
         const txHash = await new Promise<string>((resolve, reject) => {
           sendTransaction(
@@ -223,14 +223,14 @@ export default function SetupSafePage() {
         })
 
         toast.info(`Transaction submitted: ${txHash.slice(0, 10)}... Waiting for confirmation...`)
-        
+
         // Wait for deployment to be confirmed (longer delay for Sepolia)
         await new Promise(resolve => setTimeout(resolve, 15000))
-        
+
         // Verify deployment multiple times
         let attempts = 0
         let deployed = false
-        
+
         while (attempts < 3 && !deployed) {
           deployed = await protocolKit.isSafeDeployed()
           if (!deployed) {
@@ -239,9 +239,9 @@ export default function SetupSafePage() {
           }
           attempts++
         }
-        
+
         finalDeploymentStatus = deployed
-        
+
         if (!deployed) {
           console.warn("⚠️ Safe deployment not confirmed after 3 attempts")
           toast.warning("Safe deployment is taking longer than expected. You may need to refresh after deployment completes.")
@@ -301,7 +301,7 @@ export default function SetupSafePage() {
     toast.success("Safe wallet activated!", {
       description: `Your workspace will now operate through Safe multisig at ${safeAddress.slice(0, 10)}...`,
     })
-    
+
     setTimeout(() => {
       router.push("/workspace")
     }, 1000)
@@ -331,7 +331,7 @@ export default function SetupSafePage() {
               Set up enterprise-grade security for your payroll operations. Multiple signatures
               required for all transactions.
             </p>
-            
+
             {/* Workspace Info Banner */}
             {workspaceData && (
               <div className="mt-6 max-w-md mx-auto">
@@ -365,7 +365,7 @@ export default function SetupSafePage() {
                   {/* Owner (Current User) */}
                   <div className="space-y-4">
                     <Label className="text-base font-semibold">Signers</Label>
-                    
+
                     <div className="p-4 bg-[#0070BA]/10 border border-[#0070BA]/20 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-medium">Owner (You)</div>
@@ -526,29 +526,26 @@ export default function SetupSafePage() {
 
                       <div className="grid grid-cols-3 gap-2 text-center text-xs">
                         <div
-                          className={`p-2 rounded ${
-                            threshold === 1
+                          className={`p-2 rounded ${threshold === 1
                               ? "bg-orange-100 text-orange-700 border border-orange-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Low Security
                         </div>
                         <div
-                          className={`p-2 rounded ${
-                            threshold > 1 && threshold < signers.length
+                          className={`p-2 rounded ${threshold > 1 && threshold < signers.length
                               ? "bg-green-100 text-green-700 border border-green-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Recommended
                         </div>
                         <div
-                          className={`p-2 rounded ${
-                            threshold === signers.length
+                          className={`p-2 rounded ${threshold === signers.length
                               ? "bg-blue-100 text-blue-700 border border-blue-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Maximum Security
                         </div>
@@ -673,7 +670,7 @@ export default function SetupSafePage() {
                       Important: Your Safe is Now Active
                     </div>
                     <div className="text-orange-800 dark:text-orange-200">
-                      All payroll operations will now require {threshold} of {signers.length} signatures. 
+                      All payroll operations will now require {threshold} of {signers.length} signatures.
                       Your Safe wallet is now the primary account for all transactions.
                     </div>
                   </div>

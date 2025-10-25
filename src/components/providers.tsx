@@ -11,6 +11,7 @@ import { sepolia } from "viem/chains"
 import { config } from "@/config/wallet"
 import { useSafeConfig } from "@/store/safe"
 import { useEffect, useState } from "react"
+import { SafeAppsProvider } from "@/components/safe-apps-provider"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,9 +106,11 @@ export function Providers({
             overlayBlur: "large",
           })}
         >
-          <SafeProviderWrapper>
-            {children}
-          </SafeProviderWrapper>
+          <SafeAppsProvider>
+            <SafeProviderWrapper>
+              {children}
+            </SafeProviderWrapper>
+          </SafeAppsProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

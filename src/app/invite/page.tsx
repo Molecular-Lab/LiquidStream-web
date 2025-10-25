@@ -43,7 +43,7 @@ export default function InvitePage() {
       try {
         // TODO: Fetch invitation details from your backend/API
         // This would validate the token and return workspace info
-        
+
         await new Promise((resolve) => setTimeout(resolve, 1000))
 
         // Mock data
