@@ -39,9 +39,7 @@ export function Providers({
           })}
         >
           <SafeAppsProvider>
-            <SafeProviderWrapper>
-              {children}
-            </SafeProviderWrapper>
+            {children}
           </SafeAppsProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

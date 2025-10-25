@@ -4,10 +4,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Address, encodeFunctionData, parseUnits } from "viem"
 import { useAccount } from "wagmi"
-import { useCallback } from "react"
 import SafeAppsSDK, { BaseTransaction } from "@safe-global/safe-apps-sdk"
 
-import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI, HOST_ADDRESS, HOST_ABI, CFAV1_ADDRESS, CFA_ABI, buildCreateFlowOperation, buildUpdateFlowOperation, buildDeleteFlowOperation } from "@/lib/contract"
+import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
 import { useSafeConfig } from "@/store/safe"
 import { parseAbi } from "viem"
 
@@ -82,10 +81,10 @@ export const useSafeAppsTokenOperations = () => {
                 case 'upgrade':
                     // For upgrade, we need TWO transactions: approve PYUSD + upgrade to PYUSDx
                     // PYUSD has 6 decimals, PYUSDx has 18 decimals
-
+                    
                     // Calculate the PYUSD amount (6 decimals) from PYUSDx amount (18 decimals)
                     const pyusdAmount = amount / BigInt(10 ** 12) // Convert 18 decimals back to 6 decimals
-
+                    
                     // Step 1: Approve PYUSD spending by PYUSDx contract (6 decimals)
                     const upgradeApproveData = encodeFunctionData({
                         abi: PYUSD_ABI,
@@ -323,30 +322,27 @@ export const useSafeAppsInfo = () => {
  */
 export const useSafeAppsStreamOperations = () => {
     const { address } = useAccount()
-    const { safeConfig, isSigner } = useSafeConfig()
+    const { safeConfig, addPendingTransaction, isSigner } = useSafeConfig()
+    const queryClient = useQueryClient()
 
-    const executeStreamOperation = useCallback(async ({
-        operation,
-        token,
-        receiver,
-        flowRate,
-        employeeId,
-        employeeName,
-        tokenSymbol,
-    }: {
-        operation: 'create' | 'update' | 'delete'
-        token: Address
-        receiver: Address
-        flowRate?: bigint
-        employeeId?: string
-        employeeName?: string
-        tokenSymbol?: string
-    }) => {
-        try {
-            if (!isInSafeContext()) {
-                throw new Error("This operation requires running inside Safe interface")
-            }
-
+    return useMutation({
+        mutationFn: async ({
+            operation,
+            token,
+            receiver,
+            flowRate,
+            employeeId,
+            employeeName,
+            tokenSymbol,
+        }: {
+            operation: 'create' | 'update' | 'delete'
+            token: Address
+            receiver: Address
+            flowRate?: bigint
+            employeeId?: string
+            employeeName?: string
+            tokenSymbol?: string
+        }) => {
             if (!address || !safeConfig) {
                 throw new Error("Wallet not connected or Safe not configured")
             }
@@ -359,123 +355,82 @@ export const useSafeAppsStreamOperations = () => {
             let description: string
 
             // Create transaction data based on operation type
+            // This would need to be implemented based on your Superfluid contract calls
             switch (operation) {
                 case 'create':
                     if (!flowRate) throw new Error("Flow rate required for create operation")
 
-                    // Create Superfluid stream operation
-                    const createOperation = buildCreateFlowOperation(token, receiver, flowRate)
-
-                    const createStreamData = encodeFunctionData({
-                        abi: HOST_ABI,
-                        functionName: "batchCall",
-                        args: [[createOperation]]
-                    })
-
+                    // Example transaction for creating stream
+                    // You'll need to replace this with actual Superfluid contract calls
                     transactions = [{
-                        to: HOST_ADDRESS,
+                        to: token,
                         value: "0",
-                        data: createStreamData
+                        data: "0x" // Encode your create stream function call here
                     }]
                     description = `Start payment stream to ${employeeName || receiver} (${tokenSymbol})`
-                    console.log("Creating start stream transaction:", {
-                        to: HOST_ADDRESS,
-                        receiver,
-                        flowRate: flowRate.toString(),
-                        data: createStreamData
-                    })
                     break
 
                 case 'update':
                     if (!flowRate) throw new Error("Flow rate required for update operation")
 
-                    // Update Superfluid stream operation
-                    const updateOperation = buildUpdateFlowOperation(token, receiver, flowRate)
-
-                    const updateStreamData = encodeFunctionData({
-                        abi: HOST_ABI,
-                        functionName: "batchCall",
-                        args: [[updateOperation]]
-                    })
-
                     transactions = [{
-                        to: HOST_ADDRESS,
+                        to: token,
                         value: "0",
-                        data: updateStreamData
+                        data: "0x" // Encode your update stream function call here
                     }]
                     description = `Update payment stream to ${employeeName || receiver} (${tokenSymbol})`
-                    console.log("Creating update stream transaction:", {
-                        to: HOST_ADDRESS,
-                        receiver,
-                        flowRate: flowRate.toString(),
-                        data: updateStreamData
-                    })
                     break
 
                 case 'delete':
-                    // Delete Superfluid stream operation (requires sender address)
-                    if (!address) throw new Error("Sender address required for delete operation")
-
-                    const deleteOperation = buildDeleteFlowOperation(token, address, receiver)
-
-                    const deleteStreamData = encodeFunctionData({
-                        abi: HOST_ABI,
-                        functionName: "batchCall",
-                        args: [[deleteOperation]]
-                    })
-
                     transactions = [{
-                        to: HOST_ADDRESS,
+                        to: token,
                         value: "0",
-                        data: deleteStreamData
+                        data: "0x" // Encode your delete stream function call here
                     }]
                     description = `Stop payment stream to ${employeeName || receiver} (${tokenSymbol})`
-                    console.log("Creating stop stream transaction:", {
-                        to: HOST_ADDRESS,
-                        sender: address,
-                        receiver,
-                        data: deleteStreamData
-                    })
                     break
-
-                default:
-                    throw new Error(`Unknown operation: ${operation}`)
             }
 
-            if (!transactions.length) {
-                throw new Error("Failed to generate transaction data")
-            }
+            // Send transactions using Safe Apps SDK
+            const response = await sdk.txs.send({ txs: transactions })
 
-            // Send transaction to Safe
-            const safeTxHash = await sdk.txs.send({
-                txs: transactions
+            // Store transaction info locally
+            addPendingTransaction({
+                type: operation === 'create' ? "start_stream" : operation === 'delete' ? "stop_stream" : "transfer",
+                description,
+                to: token,
+                signatures: [],
+                requiredSignatures: safeConfig.threshold,
+                createdBy: address,
+                status: "pending",
+                nonce: 0,
+                safeTransactionHash: response.safeTxHash,
+                employeeId,
+                employeeName,
+                tokenSymbol,
+                flowRate: flowRate?.toString(),
+                data: JSON.stringify(transactions),
             })
 
-            console.log("Stream transaction sent to Safe:", {
-                operation,
-                description,
-                txHash: safeTxHash,
-                transactions
+            return { safeTxHash: response.safeTxHash }
+        },
+        onSuccess: (result, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["streams"] })
+
+            toast.success(`Stream ${variables.operation} transaction created!`, {
+                description: `SafeTxHash: ${result.safeTxHash.slice(0, 10)}...`,
+                action: {
+                    label: "Open Safe App",
+                    onClick: () => window.open(`https://app.safe.global/transactions/queue?safe=${safeConfig?.address}`, '_blank')
+                }
             })
-
-            return {
-                success: true,
-                description,
-                txHash: safeTxHash
-            }
-
-        } catch (error) {
-            console.error("Stream operation failed:", error)
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Stream operation failed'
-            }
-        }
-    }, [address, safeConfig, isSigner])
-
-    return {
-        executeStreamOperation
-    }
+        },
+        onError: (error: Error, variables) => {
+            toast.error(`Failed to ${variables.operation} stream`, {
+                description: error.message,
+            })
+        },
+    })
 }
 
 export { sdk as safeAppsSDK }

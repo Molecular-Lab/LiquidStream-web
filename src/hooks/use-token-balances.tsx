@@ -12,12 +12,12 @@ export const refreshTokenBalances = (queryClient: QueryClient) => {
 
 export const useTokenBalances = () => {
   const { address } = useAccount()
-
+  
   return useQuery({
     queryKey: ["token-balances", address],
     queryFn: async () => {
       if (!address) return { pyusdx: 0, pyusd: 0 }
-
+      
       // Use separate readContract calls to avoid deep type instantiation
       const [pyusdxBalance, pyusdBalance] = await Promise.all([
         publicClient.readContract({
@@ -33,7 +33,7 @@ export const useTokenBalances = () => {
           args: [address],
         } as any)
       ])
-
+      
       return {
         pyusdx: pyusdxBalance ? Number(pyusdxBalance) / 1e18 : 0,
         pyusd: pyusdBalance ? Number(pyusdBalance) / 1e18 : 0,

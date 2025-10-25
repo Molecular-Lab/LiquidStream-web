@@ -14,7 +14,7 @@ import {
 } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
 import { useSafeConfig } from "@/store/safe"
-import { useSafeAppsStreamOperations } from "@/hooks/use-safe-apps-sdk"
+import { useSafeStreamOperations } from "@/hooks/use-safe-operations"
 
 /**
  * Hook to create a new payment stream using Safe multisig or direct wallet
@@ -25,7 +25,7 @@ export const useCreateStream = () => {
   const queryClient = useQueryClient()
   const addStream = useStreamStore((state) => state.addStream)
   const { safeConfig } = useSafeConfig()
-  const { executeStreamOperation } = useSafeAppsStreamOperations()
+  const { mutate: createSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
@@ -47,34 +47,38 @@ export const useCreateStream = () => {
 
       // Use Safe multisig if configured, otherwise use direct wallet
       if (safeConfig?.address) {
-        // Create Safe transaction using Safe Apps SDK
-        const result = await executeStreamOperation({
-          operation: 'create',
-          token,
-          receiver,
-          flowRate,
-          employeeId,
-          employeeName,
-          tokenSymbol,
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          createSafeStream(
+            {
+              operation: 'create',
+              token,
+              receiver,
+              flowRate,
+              employeeId,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Add to local store
+                addStream({
+                  employeeId,
+                  employeeName,
+                  employeeAddress: receiver as `0x${string}`,
+                  token: token as `0x${string}`,
+                  tokenSymbol,
+                  flowRate: flowRate.toString(),
+                  startTime: Date.now(),
+                  status: "active",
+                })
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
         })
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to create stream')
-        }
-
-        // Add to local store
-        addStream({
-          employeeId,
-          employeeName,
-          employeeAddress: receiver as `0x${string}`,
-          token: token as `0x${string}`,
-          tokenSymbol,
-          flowRate: flowRate.toString(),
-          startTime: Date.now(),
-          status: "active",
-        })
-
-        return result.txHash
+        return "safe-transaction" // Return placeholder since Safe handles the actual hash
       } else {
         // Direct wallet transaction (fallback)
         const operation = buildCreateFlowOperation(token, receiver, flowRate)
@@ -102,21 +106,13 @@ export const useCreateStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-
-      // Check if result is from Safe Apps SDK (has safeTxHash)
-      if (typeof result === 'object' && 'safeTxHash' in result) {
-        toast.success("Stream transaction created in Safe!", {
-          description: `SafeTxHash: ${result.safeTxHash.slice(0, 10)}...`,
-          action: {
-            label: "Open Safe App",
-            onClick: () => window.open(`https://app.safe.global/transactions/queue?safe=${safeConfig?.address}`, '_blank')
-          }
-        })
-      } else {
-        toast.success("Payment stream created successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
-        })
+      if (result === "safe-transaction") {
+        // Safe operation success is handled by useSafeStreamOperations
+        return
       }
+      toast.success("Payment stream created successfully!", {
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
+      })
     },
     onError: (error: Error) => {
       toast.error("Failed to create stream", {
@@ -135,7 +131,7 @@ export const useUpdateStream = () => {
   const queryClient = useQueryClient()
   const updateStream = useStreamStore((state) => state.updateStream)
   const { safeConfig } = useSafeConfig()
-  const { executeStreamOperation } = useSafeAppsStreamOperations()
+  const { mutate: updateSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
@@ -157,27 +153,31 @@ export const useUpdateStream = () => {
 
       // Use Safe multisig if configured, otherwise use direct wallet
       if (safeConfig?.address) {
-        // Update Safe transaction using Safe Apps SDK
-        const result = await executeStreamOperation({
-          operation: 'update',
-          token,
-          receiver,
-          flowRate: newFlowRate,
-          employeeName,
-          tokenSymbol,
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          updateSafeStream(
+            {
+              operation: 'update',
+              token,
+              receiver,
+              flowRate: newFlowRate,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Update local store
+                updateStream(streamId, {
+                  flowRate: newFlowRate.toString(),
+                  status: "active",
+                })
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
         })
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to update stream')
-        }
-
-        // Update local store
-        updateStream(streamId, {
-          flowRate: newFlowRate.toString(),
-          status: "active",
-        })
-
-        return result.txHash
+        return "safe-transaction"
       } else {
         // Direct wallet transaction (fallback)
         const operation = buildUpdateFlowOperation(token, receiver, newFlowRate)
@@ -199,21 +199,12 @@ export const useUpdateStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-
-      // Check if result is from Safe Apps SDK (has safeTxHash)
-      if (typeof result === 'object' && 'safeTxHash' in result) {
-        toast.success("Stream update transaction created in Safe!", {
-          description: `SafeTxHash: ${result.safeTxHash.slice(0, 10)}...`,
-          action: {
-            label: "Open Safe App",
-            onClick: () => window.open(`https://app.safe.global/transactions/queue?safe=${safeConfig?.address}`, '_blank')
-          }
-        })
-      } else {
-        toast.success("Stream updated successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
-        })
+      if (result === "safe-transaction") {
+        return
       }
+      toast.success("Stream updated successfully!", {
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
+      })
     },
     onError: (error: Error) => {
       toast.error("Failed to update stream", {
@@ -232,7 +223,7 @@ export const useDeleteStream = () => {
   const queryClient = useQueryClient()
   const endStream = useStreamStore((state) => state.endStream)
   const { safeConfig } = useSafeConfig()
-  const { executeStreamOperation } = useSafeAppsStreamOperations()
+  const { mutate: deleteSafeStream } = useSafeStreamOperations()
 
   return useMutation({
     mutationFn: async ({
@@ -252,23 +243,27 @@ export const useDeleteStream = () => {
 
       // Use Safe multisig if configured, otherwise use direct wallet
       if (safeConfig?.address) {
-        // Delete Safe transaction using Safe Apps SDK
-        const result = await executeStreamOperation({
-          operation: 'delete',
-          token,
-          receiver,
-          employeeName,
-          tokenSymbol,
+        // Create Safe transaction
+        await new Promise<void>((resolve, reject) => {
+          deleteSafeStream(
+            {
+              operation: 'delete',
+              token,
+              receiver,
+              employeeName,
+              tokenSymbol,
+            },
+            {
+              onSuccess: () => {
+                // Update local store
+                endStream(streamId)
+                resolve()
+              },
+              onError: (error) => reject(error),
+            }
+          )
         })
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to stop stream')
-        }
-
-        // Update local store
-        endStream(streamId)
-
-        return result.txHash
+        return "safe-transaction"
       } else {
         // Direct wallet transaction (fallback)
         const operation = buildDeleteFlowOperation(token, address, receiver)
@@ -287,21 +282,12 @@ export const useDeleteStream = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["streams"] })
-
-      // Check if result is from Safe Apps SDK (has safeTxHash)
-      if (typeof result === 'object' && 'safeTxHash' in result) {
-        toast.success("Stream stop transaction created in Safe!", {
-          description: `SafeTxHash: ${result.safeTxHash.slice(0, 10)}...`,
-          action: {
-            label: "Open Safe App",
-            onClick: () => window.open(`https://app.safe.global/transactions/queue?safe=${safeConfig?.address}`, '_blank')
-          }
-        })
-      } else {
-        toast.success("Stream stopped successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
-        })
+      if (result === "safe-transaction") {
+        return
       }
+      toast.success("Stream stopped successfully!", {
+        description: `Transaction hash: ${result.slice(0, 10)}...`,
+      })
     },
     onError: (error: Error) => {
       toast.error("Failed to stop stream", {

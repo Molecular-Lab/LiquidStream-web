@@ -15,11 +15,23 @@ export interface CompanyInfo {
   country: string
 }
 
-export interface WorkspaceRegistration {
+// New simplified workspace registration (single wallet)
+export interface SimpleWorkspaceRegistration {
+  name: string
+  description?: string
+  walletAddress: string
+  createdAt: string
+}
+
+// Legacy multisig workspace registration
+export interface MultisigWorkspaceRegistration {
   company: CompanyInfo
   team: TeamMember[]
   createdAt: string
 }
+
+// Support both formats
+export type WorkspaceRegistration = SimpleWorkspaceRegistration | MultisigWorkspaceRegistration
 
 interface WorkspaceStore {
   registration: WorkspaceRegistration | null
@@ -66,7 +78,11 @@ export const useWorkspaceRegistration = create<WorkspaceStore>()(
 
       getOperators: () => {
         const state = get()
-        return state.registration?.team || []
+        // Support legacy multisig format
+        if (state.registration && 'team' in state.registration) {
+          return state.registration.team
+        }
+        return []
       },
     }),
     {
