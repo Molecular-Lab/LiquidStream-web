@@ -11,7 +11,7 @@ import { useSafeConfig } from "@/store/safe"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) returns (bool)',
+    'function approve(address spender, uint256 amount) returns (bool)',
 ])
 
 // Initialize Safe Apps SDK
@@ -151,7 +151,7 @@ export const useSafeAppsTokenOperations = () => {
 
             // Check if we're in Safe context
             const inSafeContext = isInSafeContext()
-            
+
             if (!inSafeContext) {
                 // Development mode - provide instructions
                 throw new Error(`Safe Apps SDK requires running inside Safe interface. 
@@ -175,7 +175,7 @@ For development testing, this transaction would be:
             // Send transactions using Safe Apps SDK
             console.log("Sending transactions to Safe Apps SDK:", transactions)
             const response = await sdk.txs.send({ txs: transactions })
-            
+
             console.log("Safe Apps SDK response:", response)
 
             // Store transaction info locally for UI tracking
@@ -193,24 +193,24 @@ For development testing, this transaction would be:
                 data: JSON.stringify(transactions),
             })
 
-            return { 
-                safeTxHash: response.safeTxHash, 
+            return {
+                safeTxHash: response.safeTxHash,
                 transactions,
-                submittedToSafe: true 
+                submittedToSafe: true
             }
         },
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ["token-balances"] })
             queryClient.invalidateQueries({ queryKey: ["pending-transactions"] })
 
-            const operationName = variables.operation === 'upgrade' ? 'Upgrade' : 
-                                variables.operation === 'downgrade' ? 'Downgrade' : 'Approval'
-            
+            const operationName = variables.operation === 'upgrade' ? 'Upgrade' :
+                variables.operation === 'downgrade' ? 'Downgrade' : 'Approval'
+
             const tokenInfo = variables.operation === 'upgrade'
                 ? `${variables.tokenSymbol} → ${variables.tokenSymbol}x`
                 : variables.operation === 'downgrade'
-                ? `${variables.tokenSymbol} → ${variables.tokenSymbol.replace('x', '')}`
-                : `${variables.tokenSymbol} approval`
+                    ? `${variables.tokenSymbol} → ${variables.tokenSymbol.replace('x', '')}`
+                    : `${variables.tokenSymbol} approval`
 
             toast.success(`${operationName} transaction created! 🎉`, {
                 description: `${tokenInfo} transaction submitted to Safe. SafeTxHash: ${result.safeTxHash.slice(0, 10)}...`,
@@ -251,10 +251,10 @@ export const useSafeAppsInfo = () => {
             try {
                 const safeInfo = await sdk.safe.getInfo()
                 const chainInfo = await sdk.safe.getChainInfo()
-                
+
                 console.log("Safe Apps SDK - Safe Info:", safeInfo)
                 console.log("Safe Apps SDK - Chain Info:", chainInfo)
-                
+
                 return { safeInfo, chainInfo }
             } catch (error) {
                 console.error("Failed to get Safe info:", error)
@@ -319,7 +319,7 @@ export const useSafeAppsStreamOperations = () => {
             switch (operation) {
                 case 'create':
                     if (!flowRate) throw new Error("Flow rate required for create operation")
-                    
+
                     // Example transaction for creating stream
                     // You'll need to replace this with actual Superfluid contract calls
                     transactions = [{
@@ -332,10 +332,10 @@ export const useSafeAppsStreamOperations = () => {
 
                 case 'update':
                     if (!flowRate) throw new Error("Flow rate required for update operation")
-                    
+
                     transactions = [{
                         to: token,
-                        value: "0", 
+                        value: "0",
                         data: "0x" // Encode your update stream function call here
                     }]
                     description = `Update payment stream to ${employeeName || receiver} (${tokenSymbol})`

@@ -96,7 +96,7 @@ export function SafeAppTester() {
                 )}
 
                 <div className="space-y-2">
-                    <Button 
+                    <Button
                         onClick={handleTestConnection}
                         disabled={isPending}
                         variant={inSafe ? "default" : "secondary"}
@@ -104,7 +104,7 @@ export function SafeAppTester() {
                     >
                         {isPending ? "Testing..." : "Test Safe Connection"}
                     </Button>
-                    
+
                     {testResult && (
                         <div className="text-sm font-mono bg-muted p-2 rounded">
                             {testResult}

@@ -232,11 +232,11 @@ export default function MultisigWorkspace() {
                     </div>
                 )}
 
-        {/* Safe Apps SDK Tester */}
-        <SafeAppTester />
+                {/* Safe Apps SDK Tester */}
+                <SafeAppTester />
 
-        {/* Superfluid Dashboard */}
-        <SuperfluidDashboard />                {/* Token Operations */}
+                {/* Superfluid Dashboard */}
+                <SuperfluidDashboard />                {/* Token Operations */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
                     <UpgradeDowngradeCard />
