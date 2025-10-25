@@ -346,6 +346,28 @@ export default function Home() {
         </Card>
       </section>
 
+      {/* Footer */}
+      <footer className="border-t">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              © 2025 SafeStream. Powered by PayPal USD & Superfluid.
+            </div>
+            <div className="flex gap-6 text-sm">
+              <Link href="/workspace/single" className="hover:text-[#0070BA] transition-colors">
+                Single Wallet
+              </Link>
+              <Link href="/workspace/multisig" className="hover:text-[#0070BA] transition-colors">
+                Safe Multisig
+              </Link>
+              <Link href="/register" className="hover:text-[#0070BA] transition-colors">
+                Register
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+
     </div>
   )
 }
