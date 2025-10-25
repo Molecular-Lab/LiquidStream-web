@@ -365,7 +365,7 @@ export const useSafeAppsStreamOperations = () => {
 
                     // Create Superfluid stream operation
                     const createOperation = buildCreateFlowOperation(token, receiver, flowRate)
-                    
+
                     const createStreamData = encodeFunctionData({
                         abi: HOST_ABI,
                         functionName: "batchCall",
@@ -391,7 +391,7 @@ export const useSafeAppsStreamOperations = () => {
 
                     // Update Superfluid stream operation
                     const updateOperation = buildUpdateFlowOperation(token, receiver, flowRate)
-                    
+
                     const updateStreamData = encodeFunctionData({
                         abi: HOST_ABI,
                         functionName: "batchCall",
@@ -415,9 +415,9 @@ export const useSafeAppsStreamOperations = () => {
                 case 'delete':
                     // Delete Superfluid stream operation (requires sender address)
                     if (!address) throw new Error("Sender address required for delete operation")
-                    
+
                     const deleteOperation = buildDeleteFlowOperation(token, address, receiver)
-                    
+
                     const deleteStreamData = encodeFunctionData({
                         abi: HOST_ABI,
                         functionName: "batchCall",
