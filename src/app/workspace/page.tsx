@@ -9,13 +9,17 @@ import { useAccount } from "wagmi"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 
 type WorkspaceType = "single" | "multisig"
 
 export default function WorkspaceHub() {
   const { address } = useAccount()
   const { safeConfig } = useSafe()
-  const isSafeConfigured = !!safeConfig?.address
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
+  
+  // Prioritize safe.global connection over localStorage
+  const isSafeConfigured = isInSafeContext && safeInfo ? true : !!safeConfig?.address
   const [activeTab, setActiveTab] = useState<WorkspaceType>("single")
 
   return (

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useWalletMode } from "@/store/wallet-mode"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 
 interface WalletModeBannerProps {
   showToggle?: boolean
@@ -15,9 +16,22 @@ interface WalletModeBannerProps {
 export function WalletModeBanner({ showToggle = false, onToggleMode }: WalletModeBannerProps) {
   const { isSafeMode } = useWalletMode()
   const { safeConfig } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
 
   const isSafe = isSafeMode()
-  const isSafeConfigured = !!safeConfig?.address
+  
+  // Prioritize safe.global connection
+  const activeSafeConfig = isInSafeContext && safeInfo ? {
+    address: safeInfo.safeAddress,
+    threshold: safeInfo.threshold,
+    signers: safeInfo.owners.map((owner, idx) => ({ 
+      address: owner, 
+      name: `Signer ${idx + 1}`,
+      role: "Signer" 
+    }))
+  } : safeConfig
+  
+  const isSafeConfigured = !!activeSafeConfig?.address
 
   if (isSafe && !isSafeConfigured) {
     // Safe mode but not configured - show setup required
@@ -52,15 +66,20 @@ export function WalletModeBanner({ showToggle = false, onToggleMode }: WalletMod
             <div className="flex-1">
               <div className="font-semibold text-lg text-gray-900 mb-1 flex items-center gap-2">
                 Safe Multisig Mode
+                {isInSafeContext && (
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                    Connected via safe.global
+                  </Badge>
+                )}
                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                  {safeConfig.threshold}/{safeConfig.signers.length} signatures required
+                  {activeSafeConfig.threshold}/{activeSafeConfig.signers.length} signatures required
                 </Badge>
               </div>
               <p className="text-gray-600 mb-2">
                 All transactions require multiple signatures for enhanced security. Proposals will be created for signers to approve.
               </p>
               <div className="text-xs text-muted-foreground font-mono">
-                Safe: {safeConfig.address}
+                Safe: {activeSafeConfig.address}
               </div>
               <div className="flex gap-2 mt-3">
                 <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
@@ -69,7 +88,7 @@ export function WalletModeBanner({ showToggle = false, onToggleMode }: WalletMod
                 </Badge>
                 <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
                   <Users className="mr-1 h-3 w-3" />
-                  {safeConfig.signers.length} Signers
+                  {activeSafeConfig.signers.length} Signers
                 </Badge>
               </div>
             </div>

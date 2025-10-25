@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Address, encodeFunctionData, parseUnits } from "viem"
 import { useAccount } from "wagmi"
-import { useCallback } from "react"
+import { useCallback, useState, useEffect } from "react"
 import SafeAppsSDK, { BaseTransaction } from "@safe-global/safe-apps-sdk"
 
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI, HOST_ADDRESS, HOST_ABI, CFAV1_ADDRESS, CFA_ABI, buildCreateFlowOperation, buildUpdateFlowOperation, buildDeleteFlowOperation } from "@/lib/contract"
@@ -475,6 +475,114 @@ export const useSafeAppsStreamOperations = () => {
 
     return {
         executeStreamOperation
+    }
+}
+
+/**
+ * Hook to detect and get connected Safe wallet info
+ * Prioritizes Safe.global connection over localStorage
+ */
+export const useConnectedSafeInfo = () => {
+    const [safeInfo, setSafeInfo] = useState<{
+        safeAddress: string
+        chainId: number
+        threshold: number
+        owners: string[]
+        isConnected: boolean
+        isInSafeContext: boolean
+    } | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const { safeConfig } = useSafe()
+
+    useEffect(() => {
+        let mounted = true
+
+        const detectSafe = async () => {
+            try {
+                // Check if running inside Safe iframe
+                const inSafeContext = isInSafeContext()
+                
+                if (inSafeContext) {
+                    // Try to get Safe info from SDK (when app is opened in safe.global)
+                    try {
+                        const info = await sdk.safe.getInfo()
+                        const chainInfo = await sdk.safe.getChainInfo()
+                        
+                        if (mounted) {
+                            setSafeInfo({
+                                safeAddress: info.safeAddress,
+                                chainId: parseInt(chainInfo.chainId),
+                                threshold: info.threshold,
+                                owners: info.owners,
+                                isConnected: true,
+                                isInSafeContext: true
+                            })
+                            console.log("✅ Connected to Safe from safe.global:", info.safeAddress)
+                        }
+                    } catch (sdkError) {
+                        console.warn("Failed to get Safe info from SDK:", sdkError)
+                        // Fallback to localStorage if in Safe context but SDK fails
+                        if (mounted && safeConfig) {
+                            setSafeInfo({
+                                safeAddress: safeConfig.address,
+                                chainId: safeConfig.chainId,
+                                threshold: safeConfig.threshold,
+                                owners: safeConfig.signers.map(s => s.address),
+                                isConnected: true,
+                                isInSafeContext: true
+                            })
+                        }
+                    }
+                } else {
+                    // Not in Safe context, use localStorage config if available
+                    if (mounted && safeConfig) {
+                        setSafeInfo({
+                            safeAddress: safeConfig.address,
+                            chainId: safeConfig.chainId,
+                            threshold: safeConfig.threshold,
+                            owners: safeConfig.signers.map(s => s.address),
+                            isConnected: false,
+                            isInSafeContext: false
+                        })
+                        console.log("📦 Using Safe config from localStorage:", safeConfig.address)
+                    } else {
+                        if (mounted) {
+                            setSafeInfo(null)
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error detecting Safe:", error)
+                // Fallback to localStorage
+                if (mounted && safeConfig) {
+                    setSafeInfo({
+                        safeAddress: safeConfig.address,
+                        chainId: safeConfig.chainId,
+                        threshold: safeConfig.threshold,
+                        owners: safeConfig.signers.map(s => s.address),
+                        isConnected: false,
+                        isInSafeContext: false
+                    })
+                }
+            } finally {
+                if (mounted) {
+                    setIsLoading(false)
+                }
+            }
+        }
+
+        detectSafe()
+
+        return () => {
+            mounted = false
+        }
+    }, [safeConfig])
+
+    return {
+        safeInfo,
+        isLoading,
+        isInSafeContext: safeInfo?.isInSafeContext || false,
+        hasConnectedSafe: !!safeInfo?.safeAddress,
     }
 }
 

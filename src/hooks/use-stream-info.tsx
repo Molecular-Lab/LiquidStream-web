@@ -9,6 +9,7 @@ import { readContract } from "wagmi/actions"
 import { CFAV1_ADDRESS, PYUSDX_ADDRESS, CFA_ABI, SUPER_TOKEN_ABI } from "@/lib/contract"
 import { config } from "@/config/wallet"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 import { FileWarningIcon } from "lucide-react"
 
 export interface StreamInfo {
@@ -38,10 +39,14 @@ export interface RealtimeBalance {
 export const useStreamInfo = (token: Address, sender?: Address, receiver?: Address) => {
   const { address } = useAccount()
   const { safeConfig } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
   const publicClient = usePublicClient()
 
+  // Prioritize safe.global connection
+  const activeSafeAddress = isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address
+  
   // Use Safe address if configured, otherwise use connected wallet address
-  const senderAddress = sender || safeConfig?.address || address
+  const senderAddress = sender || activeSafeAddress || address
   const receiverAddress = receiver
 
   return useQuery({

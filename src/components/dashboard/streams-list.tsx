@@ -13,6 +13,7 @@ import { useStreamInfo, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useEmployeeStore } from "@/store/employees"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 import { cn } from "@/lib/utils"
 
 interface StreamRowProps {
@@ -26,10 +27,12 @@ interface StreamRowProps {
 function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onStop, onUpdate }: StreamRowProps) {
   const { address } = useAccount()
   const { safeConfig } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
   const { data: streamInfo, isLoading: loading } = useStreamInfo(token, address, receiverAddress)
 
-  // Use Safe address if configured, otherwise use connected wallet address
-  const senderAddress = safeConfig?.address || address
+  // Prioritize safe.global connection
+  const senderAddress = isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address || address
+  const isSafeConfigured = !!(isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address)
 
   if (loading) {
     return (
@@ -60,10 +63,11 @@ function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onSt
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          {safeConfig?.address ? (
+          {isSafeConfigured ? (
             <Badge variant="secondary" className="text-xs">
               <ShieldIcon className="h-3 w-3 mr-1" />
               Safe Multisig
+              {isInSafeContext && <span className="ml-1">• Connected</span>}
             </Badge>
           ) : (
             <Badge variant="outline" className="text-xs">

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { useWorkspace } from "@/store/workspace"
 import { useSafe, type SafeSigner } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 
 interface Signer {
   address: string
@@ -29,7 +30,8 @@ export default function SetupSafePage() {
   const { data: walletClient } = useWalletClient()
   const { sendTransaction } = useSendTransaction()
   const { registration: workspaceData } = useWorkspace()
-  const { setSafeConfig } = useSafe()
+  const { setSafeConfig, safeConfig } = useSafe()
+  const { safeInfo, isLoading: isLoadingSafeInfo, isInSafeContext, hasConnectedSafe } = useConnectedSafeInfo()
 
   const [isCreating, setIsCreating] = useState(false)
   const [safeCreated, setSafeCreated] = useState(false)
@@ -38,6 +40,39 @@ export default function SetupSafePage() {
     { address: address || "", name: "You (Owner)", role: "Owner" },
   ])
   const [threshold, setThreshold] = useState(1)
+
+  // Check if Safe is already connected via safe.global
+  useEffect(() => {
+    if (!isLoadingSafeInfo && safeInfo && isInSafeContext) {
+      // Safe is connected via safe.global - use that instead of creating new
+      console.log("🔗 Safe already connected via safe.global:", safeInfo.safeAddress)
+      setSafeAddress(safeInfo.safeAddress)
+      setSafeCreated(true)
+      
+      // Update Zustand store with connected Safe info
+      const safeSigners: SafeSigner[] = safeInfo.owners.map((owner, idx) => ({
+        address: owner,
+        name: idx === 0 ? "Owner" : `Signer ${idx + 1}`,
+        role: idx === 0 ? "Owner" : "Signer",
+      }))
+
+      if (!safeConfig || safeConfig.address !== safeInfo.safeAddress) {
+        setSafeConfig({
+          address: safeInfo.safeAddress,
+          signers: safeSigners,
+          threshold: safeInfo.threshold,
+          chainId: safeInfo.chainId,
+          createdAt: new Date().toISOString(),
+          createdBy: address || safeInfo.owners[0],
+          workspaceName: workspaceData?.name,
+        })
+        
+        toast.success("Safe wallet detected!", {
+          description: `Connected to Safe at ${safeInfo.safeAddress.slice(0, 10)}...`,
+        })
+      }
+    }
+  }, [isLoadingSafeInfo, safeInfo, isInSafeContext, address, workspaceData, safeConfig, setSafeConfig])
 
   useEffect(() => {
     if (address && signers[0] && signers[0].address !== address) {
@@ -256,18 +291,45 @@ export default function SetupSafePage() {
                 </Card>
               </div>
             )}
+
+            {/* Safe Connection Status Banner */}
+            {isInSafeContext && safeInfo && (
+              <div className="mt-6 max-w-2xl mx-auto">
+                <Card className="border-green-500/50 bg-green-50/50 dark:bg-green-950/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm space-y-1 text-left">
+                        <div className="font-semibold text-green-900 dark:text-green-100">
+                          Safe Wallet Connected via safe.global
+                        </div>
+                        <div className="text-green-800 dark:text-green-200">
+                          Using existing Safe: {safeInfo.safeAddress.slice(0, 10)}...{safeInfo.safeAddress.slice(-8)}
+                        </div>
+                        <div className="text-xs text-green-700 dark:text-green-300">
+                          {safeInfo.threshold} of {safeInfo.owners.length} signatures required
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           {!safeCreated ? (
             <>
-              <Card className="border-2 mb-8">
-                <CardHeader>
-                  <CardTitle>Configure Your Safe</CardTitle>
-                  <CardDescription>
-                    Add your operation team members as signers and set signature threshold
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+              {/* Only show configuration form if NOT connected via safe.global */}
+              {!isInSafeContext && (
+                <>
+                  <Card className="border-2 mb-8">
+                    <CardHeader>
+                      <CardTitle>Configure Your Safe</CardTitle>
+                      <CardDescription>
+                        Add your operation team members as signers and set signature threshold
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
                   <div className="space-y-4">
                     <Label className="text-base font-semibold">Signers</Label>
 
@@ -427,25 +489,39 @@ export default function SetupSafePage() {
               </div>
 
               <div className="flex justify-center">
-                <Button
-                  size="lg"
-                  onClick={handleCreateSafe}
-                  disabled={!isConnected || isCreating || signers.length < 1}
-                  className="bg-[#0070BA] hover:bg-[#005A94] text-lg h-14 px-12"
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Creating Safe Wallet...
-                    </>
-                  ) : (
-                    <>
-                      Create Safe Wallet
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
+                {isInSafeContext && safeInfo ? (
+                  <Button
+                    size="lg"
+                    onClick={handleContinueToDashboard}
+                    className="bg-green-600 hover:bg-green-700 text-lg h-14 px-12"
+                  >
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Continue to Workspace
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={handleCreateSafe}
+                    disabled={!isConnected || isCreating || signers.length < 1}
+                    className="bg-[#0070BA] hover:bg-[#005A94] text-lg h-14 px-12"
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Creating Safe Wallet...
+                      </>
+                    ) : (
+                      <>
+                        Create Safe Wallet
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
+              </>
+              )}
             </>
           ) : (
             <Card className="border-2 border-green-500/50 bg-green-50/50 dark:bg-green-950/20">

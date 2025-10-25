@@ -8,6 +8,7 @@ import { EmployeeList } from "@/components/employees/employee-list"
 import { Employee } from "@/store/employees"
 import { useWalletMode } from "@/store/wallet-mode"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 
 interface EmployeesTabProps {
   onStartStream: (employee: Employee) => void
@@ -17,9 +18,21 @@ interface EmployeesTabProps {
 export function EmployeesTab({ onStartStream, onStopStream }: EmployeesTabProps) {
   const { isSafeMode } = useWalletMode()
   const { safeConfig } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
 
   const isSafe = isSafeMode()
-  const isSafeConfigured = !!safeConfig?.address
+  // Prioritize safe.global connection
+  const activeSafeConfig = isInSafeContext && safeInfo ? {
+    address: safeInfo.safeAddress,
+    threshold: safeInfo.threshold,
+    signers: safeInfo.owners.map((owner, idx) => ({ 
+      address: owner, 
+      name: `Signer ${idx + 1}`,
+      role: "Signer" 
+    }))
+  } : safeConfig
+  
+  const isSafeConfigured = !!activeSafeConfig?.address
   const isInSafeMode = isSafe && isSafeConfigured
 
   // Color scheme based on wallet mode
@@ -42,7 +55,7 @@ export function EmployeesTab({ onStartStream, onStopStream }: EmployeesTabProps)
                 {!isSafeConfigured && isSafe
                   ? "Configure Safe multisig to manage employee payment streams securely"
                   : isSafe
-                    ? `Create, manage, and control payment streams (requires ${safeConfig?.threshold}/${safeConfig?.signers.length} signatures)`
+                    ? `Create, manage, and control payment streams (requires ${activeSafeConfig?.threshold}/${activeSafeConfig?.signers.length} signatures)`
                     : "Create, manage, and control payment streams for your team members"
                 }
               </CardDescription>

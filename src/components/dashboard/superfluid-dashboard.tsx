@@ -11,15 +11,17 @@ import { useRealtimeBalance, useIncomingStreams, formatFlowRate } from "@/hooks/
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
 import { useSafe } from "@/store/safe"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 import { Separator } from "@/components/ui/separator"
 
 export function SuperfluidDashboard() {
   const { address } = useAccount()
   const { safeConfig } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
 
-  // Use Safe address if configured, otherwise use connected wallet
-  const activeAddress = (safeConfig?.address || address) as Address | undefined
-  const isSafeConfigured = !!safeConfig?.address
+  // Prioritize safe.global connection
+  const activeAddress = (isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address || address) as Address | undefined
+  const isSafeConfigured = !!(isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address)
 
   const { balance, loading: balanceLoading } = useRealtimeBalance(PYUSDX_ADDRESS, activeAddress)
   const { netFlowRate, loading: flowLoading } = useIncomingStreams(PYUSDX_ADDRESS, activeAddress)

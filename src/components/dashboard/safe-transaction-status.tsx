@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useSafe, PendingTransaction } from "@/store/safe"
 import { useSignSafeTransaction, useExecuteSafeTransaction, usePendingTransactions } from "@/hooks/use-safe-operations"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 
 interface SafeTransactionStatusProps {
     className?: string
@@ -19,11 +20,15 @@ interface SafeTransactionStatusProps {
 export function SafeTransactionStatus({ className }: SafeTransactionStatusProps) {
     const { address } = useAccount()
     const { safeConfig } = useSafe()
+    const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
     const { data: pendingTransactions = [] } = usePendingTransactions()
     const { mutate: signTransaction, isPending: isSigning } = useSignSafeTransaction()
     const { mutate: executeTransaction, isPending: isExecuting } = useExecuteSafeTransaction()
 
-    if (!safeConfig?.address || pendingTransactions.length === 0) {
+    // Prioritize safe.global connection
+    const activeSafeAddress = isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address
+
+    if (!activeSafeAddress || pendingTransactions.length === 0) {
         return null
     }
 

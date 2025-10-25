@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
 import { useSafe } from "@/store/safe"
 import { useSafeTokenOperations } from "@/hooks/use-safe-operations"
-import { useSafeAppsTokenOperations } from "@/hooks/use-safe-apps-sdk"
+import { useSafeAppsTokenOperations, useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
@@ -36,14 +36,26 @@ export function UpgradeDowngradeCard() {
   const { writeContractAsync } = useWriteContract()
   const publicClient = usePublicClient()
   const { safeConfig, isSigner } = useSafe()
+  const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
   const { mutate: createSafeTokenTransaction, isPending: isSafeOperationPending } = useSafeTokenOperations()
   const { mutate: createSafeAppsTransaction, isPending: isSafeAppsPending } = useSafeAppsTokenOperations()
 
-  const isSafeConfigured = !!safeConfig?.address
+  // Prioritize safe.global connection
+  const activeSafeConfig = isInSafeContext && safeInfo ? {
+    address: safeInfo.safeAddress,
+    threshold: safeInfo.threshold,
+    signers: safeInfo.owners.map((owner, idx) => ({ 
+      address: owner, 
+      name: `Signer ${idx + 1}`,
+      role: "Signer" 
+    }))
+  } : safeConfig
+
+  const isSafeConfigured = !!activeSafeConfig?.address
   const isUserSigner = address ? isSigner(address) : false
 
   // Use Safe address or connected wallet address for balance queries
-  const queryAddress = (safeConfig?.address || address) as Address | undefined
+  const queryAddress = (activeSafeConfig?.address || address) as Address | undefined
 
   // Read PYUSD balance (from Safe or connected wallet)
   const { data: pyusdBalance } = useReadContract({
@@ -318,7 +330,7 @@ export function UpgradeDowngradeCard() {
         </CardTitle>
         <CardDescription>
           {isSafeConfigured
-            ? `Create proposals to upgrade PYUSD to Streamable PYUSD or downgrade back to regular PYUSD - requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures`
+            ? `Create proposals to upgrade PYUSD to Streamable PYUSD or downgrade back to regular PYUSD - requires ${activeSafeConfig.threshold}/${activeSafeConfig.signers.length} signatures`
             : "Upgrade PYUSD to Streamable PYUSD or downgrade back to regular PYUSD"
           }
         </CardDescription>
@@ -334,8 +346,13 @@ export function UpgradeDowngradeCard() {
                   Safe Multisig Operations
                 </div>
                 <div className="text-blue-800 dark:text-blue-200 text-xs">
-                  Token operations will create transaction proposals requiring {safeConfig.threshold} out of {safeConfig.signers.length} signatures.
-                  Balances shown are from Safe wallet: {safeConfig.address.slice(0, 10)}...{safeConfig.address.slice(-6)}
+                  Token operations will create transaction proposals requiring {activeSafeConfig.threshold} out of {activeSafeConfig.signers.length} signatures.
+                  Balances shown are from Safe wallet: {activeSafeConfig.address.slice(0, 10)}...{activeSafeConfig.address.slice(-6)}
+                  {isInSafeContext && (
+                    <div className="mt-1 text-blue-700 dark:text-blue-300 font-medium">
+                      ✅ Connected via safe.global
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

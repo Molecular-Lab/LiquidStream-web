@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { useDeleteStream } from "@/hooks/use-streams"
 import { useSingleWalletDeleteStream } from "@/hooks/use-single-wallet-streams"
 import { usePendingTransactions } from "@/hooks/use-safe-operations"
+import { useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
 import { Employee } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
 import { useSafe } from "@/store/safe"
@@ -37,7 +38,8 @@ export default function MultisigWorkspace() {
 
     // Wallet mode management - this page is always in Safe Multisig mode
     const { mode: walletMode, setMode: setWalletMode } = useWalletMode()
-    const { safeConfig } = useSafe()
+    const { safeConfig, setSafeConfig } = useSafe()
+    const { safeInfo, isInSafeContext } = useConnectedSafeInfo()
     const { data: pendingTransactions = [] } = usePendingTransactions()
 
     // Stream management
@@ -50,7 +52,29 @@ export default function MultisigWorkspace() {
         setWalletMode('safe')
     }, [setWalletMode])
 
-    const safeAddress = safeConfig?.address
+    // Sync Safe info from safe.global if connected
+    useEffect(() => {
+        if (isInSafeContext && safeInfo && (!safeConfig || safeConfig.address !== safeInfo.safeAddress)) {
+            const safeSigners = safeInfo.owners.map((owner, idx) => ({
+                address: owner,
+                name: idx === 0 ? "Owner" : `Signer ${idx + 1}`,
+                role: idx === 0 ? "Owner" : "Signer",
+            }))
+
+            setSafeConfig({
+                address: safeInfo.safeAddress,
+                signers: safeSigners,
+                threshold: safeInfo.threshold,
+                chainId: safeInfo.chainId,
+                createdAt: new Date().toISOString(),
+                createdBy: address || safeInfo.owners[0],
+            })
+            
+            console.log("✅ Synced Safe from safe.global to multisig workspace:", safeInfo.safeAddress)
+        }
+    }, [isInSafeContext, safeInfo, safeConfig, setSafeConfig, address])
+
+    const safeAddress = isInSafeContext && safeInfo ? safeInfo.safeAddress : safeConfig?.address
     const pendingSignaturesCount = pendingTransactions.filter(tx => tx.status === 'pending' || tx.status === 'ready').length
     const isSafeConfigured = !!safeConfig?.address
     const isInSafeMode = walletMode === 'safe'
