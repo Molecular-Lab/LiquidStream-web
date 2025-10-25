@@ -88,7 +88,7 @@ export function UpgradeDowngradeCard() {
 
         // Refresh allowance to get the latest value
         await refetchAllowance()
-        
+
         // Check if we need approval first - give a small buffer for rounding
         const currentAllowance = allowance || BigInt(0)
         const needsApproval = currentAllowance < amountInUnits
