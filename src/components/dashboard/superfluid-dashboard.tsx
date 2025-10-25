@@ -94,7 +94,7 @@ export function SuperfluidDashboard() {
         {/* Balance Card */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardDescription className="text-xs flex items-center gap-2">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
               Balance
               {isSafeConfigured ? (
                 <Badge variant="secondary" className="text-xs">
@@ -107,7 +107,7 @@ export function SuperfluidDashboard() {
                   Direct Wallet
                 </Badge>
               )}
-            </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

@@ -9,6 +9,7 @@ import { useAccount } from "wagmi"
 import { SuperfluidDashboard } from "@/components/dashboard/superfluid-dashboard"
 import { SafeTransactionStatus } from "@/components/dashboard/safe-transaction-status"
 import { PendingSignaturesAlert } from "@/components/dashboard/pending-signatures-alert"
+import { SafeAppTester } from "@/components/debug/safe-app-tester"
 import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
 import { EmployeeList } from "@/components/employees/employee-list"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
@@ -231,10 +232,11 @@ export default function MultisigWorkspace() {
                     </div>
                 )}
 
-                {/* Superfluid Dashboard */}
-                <SuperfluidDashboard />
+        {/* Safe Apps SDK Tester */}
+        <SafeAppTester />
 
-                {/* Token Operations */}
+        {/* Superfluid Dashboard */}
+        <SuperfluidDashboard />                {/* Token Operations */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
                     <UpgradeDowngradeCard />

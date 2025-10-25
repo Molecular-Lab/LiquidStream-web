@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
 import { useSafeConfig } from "@/store/safe"
 import { useSafeTokenOperations } from "@/hooks/use-safe-operations"
+import { useSafeAppsTokenOperations } from "@/hooks/use-safe-apps-sdk"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
@@ -35,6 +36,7 @@ export function UpgradeDowngradeCard() {
   const publicClient = usePublicClient()
   const { safeConfig, isSigner } = useSafeConfig()
   const { mutate: createSafeTokenTransaction, isPending: isSafeOperationPending } = useSafeTokenOperations()
+  const { mutate: createSafeAppsTransaction, isPending: isSafeAppsPending } = useSafeAppsTokenOperations()
 
   const isSafeConfigured = !!safeConfig?.address
   const isUserSigner = address ? isSigner(address) : false
@@ -74,7 +76,7 @@ export function UpgradeDowngradeCard() {
       const amountInUnits = parseUnits(amount, 6) // PYUSD has 6 decimals
 
       if (isSafeConfigured) {
-        // Safe multisig workflow
+        // Safe multisig workflow using Safe Apps SDK
         if (!isUserSigner) {
           toast.error("You are not authorized to create transactions for this Safe")
           return
@@ -82,25 +84,28 @@ export function UpgradeDowngradeCard() {
 
         // Check if we need approval first
         if (!allowance || allowance < amountInUnits) {
-          // Create approval transaction proposal
-          createSafeTokenTransaction({
+          // Create approval transaction using Safe Apps SDK
+          console.log("Creating approval transaction via Safe Apps SDK...")
+          createSafeAppsTransaction({
             operation: "approve",
             tokenAddress: PYUSD_ADDRESS,
             amount: amountInUnits,
             tokenSymbol: "PYUSD",
             spenderAddress: PYUSDX_ADDRESS,
-            tokenAbi: PYUSD_ABI,
           })
 
-          toast.success("Approval transaction proposal created", {
-            description: `Requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures`,
+          // Note: We're not waiting for approval completion in Safe workflow
+          // Users need to approve first, then come back to upgrade
+          toast.success("Approval transaction created", {
+            description: `Approve the transaction in Safe, then return to upgrade.`,
           })
+          return
         }
 
-        // Create upgrade transaction proposal
+        // Create upgrade transaction using Safe Apps SDK
         const upgradeAmount = amountInUnits * BigInt(10 ** 12) // Convert 6 to 18 decimals
 
-        console.log("Creating Safe upgrade transaction:", {
+        console.log("Creating Safe upgrade transaction via Safe Apps SDK:", {
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,
           amount: upgradeAmount.toString(),
@@ -109,7 +114,7 @@ export function UpgradeDowngradeCard() {
           amountInUnits: amountInUnits.toString()
         })
 
-        createSafeTokenTransaction({
+        createSafeAppsTransaction({
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,
           amount: upgradeAmount,
@@ -180,7 +185,9 @@ export function UpgradeDowngradeCard() {
     } catch (error: any) {
       console.error("Upgrade error:", error)
       toast.error("Upgrade failed", {
-        description: error.shortMessage || error.message || "Please try again",
+        description: error.message.includes('not in an iframe')
+          ? 'Safe Apps SDK requires running inside Safe interface.'
+          : error.shortMessage || error.message || "Please try again",
       })
     } finally {
       setIsApproving(false)
@@ -196,25 +203,25 @@ export function UpgradeDowngradeCard() {
       const amountInUnits = parseUnits(amount, 18) // PYUSDx has 18 decimals
 
       if (isSafeConfigured) {
-        // Safe multisig workflow
+        // Safe multisig workflow using Safe Apps SDK
         if (!isUserSigner) {
           toast.error("You are not authorized to create transactions for this Safe")
           return
         }
 
-        // Create downgrade transaction proposal
-        createSafeTokenTransaction({
-          operation: "downgrade",
-          tokenAddress: PYUSDX_ADDRESS,
-          amount: amountInUnits,
-          tokenSymbol: "PYUSDx",
-        })
-
-        console.log("Safe downgrade transaction created:", {
+        // Create downgrade transaction using Safe Apps SDK
+        console.log("Creating Safe downgrade transaction via Safe Apps SDK:", {
           operation: "downgrade",
           tokenAddress: PYUSDX_ADDRESS,
           amount: amountInUnits.toString(),
           tokenSymbol: "PYUSDx"
+        })
+
+        createSafeAppsTransaction({
+          operation: "downgrade",
+          tokenAddress: PYUSDX_ADDRESS,
+          amount: amountInUnits,
+          tokenSymbol: "PYUSDx",
         })
 
       } else {
@@ -237,7 +244,9 @@ export function UpgradeDowngradeCard() {
     } catch (error: any) {
       console.error("Downgrade error:", error)
       toast.error("Downgrade failed", {
-        description: error.message || "Please try again",
+        description: error.message.includes('not in an iframe')
+          ? 'Safe Apps SDK requires running inside Safe interface.'
+          : error.message || "Please try again",
       })
     } finally {
       setIsProcessing(false)
@@ -388,20 +397,20 @@ export function UpgradeDowngradeCard() {
           className="w-full"
           size="lg"
           onClick={isUpgradeMode ? handleUpgrade : handleDowngrade}
-          disabled={!address || !amount || parseFloat(amount) <= 0 || isApproving || isProcessing || (isSafeConfigured && !isUserSigner)}
+          disabled={!address || !amount || parseFloat(amount) <= 0 || isApproving || isProcessing || isSafeAppsPending || (isSafeConfigured && !isUserSigner)}
         >
           {isApproving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Approving...
             </>
-          ) : isProcessing ? (
+          ) : isProcessing || isSafeAppsPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isSafeConfigured ? "Creating Proposal..." : "Processing..."}
+              {isSafeConfigured ? "Creating Safe Transaction..." : "Processing..."}
             </>
           ) : isSafeConfigured ? (
-            isUpgradeMode ? "Propose Upgrade to PYUSDx" : "Propose Downgrade to PYUSD"
+            isUpgradeMode ? "Create Upgrade Transaction" : "Create Downgrade Transaction"
           ) : (
             isUpgradeMode ? "Upgrade to PYUSDx" : "Downgrade to PYUSD"
           )}
@@ -418,9 +427,16 @@ export function UpgradeDowngradeCard() {
         {isUpgradeMode && (
           <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
             💡 {isSafeConfigured
-              ? "Upgrading will create a proposal to wrap your PYUSD into PYUSDx SuperToken, enabling real-time streaming capabilities after approval."
+              ? "Upgrading will create a transaction in your Safe queue to wrap PYUSD into PYUSDx SuperToken, enabling real-time streaming capabilities after multisig approval."
               : "Upgrading wraps your PYUSD into PYUSDx SuperToken, which enables real-time streaming capabilities."
             }
+          </div>
+        )}
+
+        {/* Safe Apps SDK Info */}
+        {isSafeConfigured && (
+          <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            🔗 This app uses Safe Apps SDK to create transactions directly in your Safe interface. Transactions will appear in your Safe&apos;s queue for signing and execution.
           </div>
         )}
       </CardContent>
