@@ -83,12 +83,12 @@ export default function SetupSafePage() {
 
   // Update owner address when wallet connects
   useEffect(() => {
-    if (address && signers[0]) {
+    if (address && signers[0] && signers[0].address !== address) {
       const updated = [...signers]
       updated[0].address = address
       setSigners(updated)
     }
-  }, [address, signers])
+  }, [address]) // Remove signers from dependency array
 
   const addOperatorAsSigner = (operator: TeamMember) => {
     // Check if already added
