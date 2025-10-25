@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Address, formatUnits, parseUnits, encodeFunctionData } from "viem"
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi"
-import { ArrowDownUp, ArrowDown, ArrowUp, Loader2, Shield, AlertTriangle } from "lucide-react"
+import { ArrowDownUp, ArrowDown, ArrowUp, Loader2, Shield, AlertTriangle, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,6 +31,7 @@ export function UpgradeDowngradeCard() {
   const [amount, setAmount] = useState("")
   const [isApproving, setIsApproving] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isRefreshingAllowance, setIsRefreshingAllowance] = useState(false)
 
   const { writeContractAsync } = useWriteContract()
   const publicClient = usePublicClient()
@@ -66,6 +67,9 @@ export function UpgradeDowngradeCard() {
     abi: PYUSD_ABI,
     functionName: "allowance",
     args: queryAddress ? [queryAddress, PYUSDX_ADDRESS] : undefined,
+    query: {
+      refetchInterval: 5000, // Refetch every 5 seconds to catch Safe transaction updates
+    },
   })
 
   const handleUpgrade = async () => {
@@ -82,14 +86,19 @@ export function UpgradeDowngradeCard() {
           return
         }
 
-        // Check if we need approval first
-        const needsApproval = !allowance || allowance < amountInUnits
+        // Refresh allowance to get the latest value
+        await refetchAllowance()
+
+        // Check if we need approval first - give a small buffer for rounding
+        const currentAllowance = allowance || BigInt(0)
+        const needsApproval = currentAllowance < amountInUnits
 
         console.log("Safe upgrade process:", {
           amountToUpgrade: amount,
           amountInUnits: amountInUnits.toString(),
-          currentAllowance: allowance?.toString() || "0",
-          needsApproval
+          currentAllowance: currentAllowance.toString(),
+          needsApproval,
+          hasAllowance: currentAllowance >= amountInUnits
         })
 
         if (needsApproval) {
@@ -104,7 +113,7 @@ export function UpgradeDowngradeCard() {
           })
 
           toast.info("Approval transaction created in Safe", {
-            description: `Approve the transaction in Safe, then return to upgrade.`,
+            description: `Execute the approval transaction in Safe, then try upgrading again.`,
           })
           return
         }
@@ -271,6 +280,20 @@ export function UpgradeDowngradeCard() {
     setAmount("")
   }
 
+  const handleRefreshAllowance = async () => {
+    setIsRefreshingAllowance(true)
+    try {
+      await refetchAllowance()
+      toast.success("Allowance refreshed", {
+        description: "Updated approval status from blockchain"
+      })
+    } catch (error) {
+      toast.error("Failed to refresh allowance")
+    } finally {
+      setIsRefreshingAllowance(false)
+    }
+  }
+
   const isUpgradeMode = mode === "upgrade"
   const formattedPyusdBalance = pyusdBalance ? formatUnits(pyusdBalance as bigint, 6) : "0"
   const formattedPyusdxBalance = pyusdxBalance ? formatUnits(pyusdxBalance as bigint, 18) : "0"
@@ -395,6 +418,23 @@ export function UpgradeDowngradeCard() {
             <span>Type</span>
             <span>{isUpgradeMode ? "Upgrade (Wrap)" : "Downgrade (Unwrap)"}</span>
           </div>
+          {isUpgradeMode && (
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>PYUSD Allowance</span>
+              <div className="flex items-center gap-2">
+                <span>{allowance ? formatUnits(allowance, 6) : "0"}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshAllowance}
+                  disabled={isRefreshingAllowance}
+                  className="h-6 w-6 p-0"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isRefreshingAllowance ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Button */}
@@ -442,6 +482,11 @@ export function UpgradeDowngradeCard() {
         {isSafeConfigured && (
           <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
             🔗 This app uses Safe Apps SDK to create transactions directly in your Safe interface. Transactions will appear in your Safe&apos;s queue for signing and execution.
+            {isUpgradeMode && (
+              <div className="mt-2 text-blue-700 dark:text-blue-300">
+                💡 <strong>Tip:</strong> After executing an approval transaction in Safe, use the refresh button (🔄) next to the allowance to update the approval status before trying to upgrade again.
+              </div>
+            )}
           </div>
         )}
       </CardContent>

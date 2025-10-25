@@ -61,6 +61,7 @@ export function StartStreamDialog({
   const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
   const { safeConfig } = useSafeConfig()
 
+  // Determine wallet mode - force single wallet overrides Safe configuration
   const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
   const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
 
@@ -201,7 +202,7 @@ export function StartStreamDialog({
             </DialogTitle>
             <DialogDescription className="text-base">
               {isSafeConfigured
-                ? `Create a proposal to stream payments to ${employee.name} (requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures)`
+                ? `Create a proposal to stream payments to ${employee.name} (requires ${safeConfig?.threshold}/${safeConfig?.signers.length} signatures)`
                 : `Stream payments to ${employee.name}`
               }
             </DialogDescription>
