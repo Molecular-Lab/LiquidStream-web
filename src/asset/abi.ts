@@ -43,10 +43,12 @@ export const CFAv1Forwarder_ABI = [
 ]
 
 // Helper: common export default (optional)
-export default {
+const abis = {
   SuperToken_ABI,
   ERC20_PYUSD_ABI,
   SuperfluidHost_ABI,
   CFA_ABI,
   CFAv1Forwarder_ABI,
 }
+
+export default abis

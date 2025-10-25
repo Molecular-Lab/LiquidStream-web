@@ -1,6 +1,6 @@
 "use client"
 
-import { MoreVerticalIcon, PlayIcon, StopCircleIcon, TrashIcon } from "lucide-react"
+import { MoreVerticalIcon, PlayIcon, StopCircleIcon, TrashIcon, ShieldIcon, AlertTriangleIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import { Employee, useEmployeeStore } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
+import { useSafeConfig } from "@/store/safe"
 
 interface EmployeeListProps {
   onStartStream: (employee: Employee) => void
@@ -33,6 +34,9 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
   const employees = useEmployeeStore((state) => state.employees)
   const removeEmployee = useEmployeeStore((state) => state.removeEmployee)
   const streams = useStreamStore((state) => state.streams)
+  const { safeConfig } = useSafeConfig()
+
+  const isSafeConfigured = !!safeConfig?.address
 
   const getEmployeeStream = (employeeId: string) => {
     return streams.find(
@@ -80,13 +84,14 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
             <TableHead>Department</TableHead>
             <TableHead>Salary</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Security</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {employees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={7} className="h-24 text-center">
                 No employees found. Add your first employee to get started.
               </TableCell>
             </TableRow>
@@ -127,6 +132,19 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
                       <Badge variant="outline">Not Started</Badge>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {isSafeConfigured ? (
+                      <Badge variant="secondary" className="text-xs">
+                        <ShieldIcon className="h-3 w-3 mr-1" />
+                        Safe Protected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        <AlertTriangleIcon className="h-3 w-3 mr-1" />
+                        Direct Wallet
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -142,14 +160,14 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
                             onClick={() => onStopStream(employee.id)}
                           >
                             <StopCircleIcon className="mr-2 h-4 w-4" />
-                            Stop Stream
+                            {isSafeConfigured ? "Propose Stop Stream" : "Stop Stream"}
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem
                             onClick={() => onStartStream(employee)}
                           >
                             <PlayIcon className="mr-2 h-4 w-4" />
-                            Start Stream
+                            {isSafeConfigured ? "Propose Start Stream" : "Start Stream"}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem

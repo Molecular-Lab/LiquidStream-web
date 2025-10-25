@@ -1,55 +1,19 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
-import { Shield, Bell, Settings, LogOut } from "lucide-react"
+import { Shield, Wallet, Users, ArrowRight, Zap, Lock, DollarSign } from "lucide-react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 
-import { SuperfluidDashboard } from "@/components/dashboard/superfluid-dashboard"
-import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
-import { EmployeeList } from "@/components/employees/employee-list"
-import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
-import { StreamsList } from "@/components/streams/streams-list"
-import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useDeleteStream } from "@/hooks/use-streams"
-import { Employee } from "@/store/employees"
-import { useStreamStore } from "@/store/streams"
+import { Badge } from "@/components/ui/badge"
+import { useSafeConfig } from "@/store/safe"
 
-export default function WorkspacePage() {
+export default function WorkspaceHub() {
   const { address } = useAccount()
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [streamDialogOpen, setStreamDialogOpen] = useState(false)
-  const streams = useStreamStore((state) => state.streams)
-  const { mutate: deleteStream } = useDeleteStream()
-
-  // TODO: Fetch from workspace data
-  const safeAddress = "0x1234...5678"
-  const pendingSignaturesCount = 2
-
-  const handleStartStream = (employee: Employee) => {
-    // When starting a stream with Safe, it will create a pending transaction
-    // that requires signatures from other operation team members
-    setSelectedEmployee(employee)
-    setStreamDialogOpen(true)
-  }
-
-  const handleStopStream = (employeeId: string) => {
-    const stream = streams.find(
-      (s) => s.employeeId === employeeId && s.status === "active"
-    )
-
-    if (stream) {
-      // This will also create a pending Safe transaction
-      deleteStream({
-        token: stream.token,
-        receiver: stream.employeeAddress,
-        streamId: stream.id,
-      })
-    }
-  }
+  const { safeConfig } = useSafeConfig()
+  const isSafeConfigured = !!safeConfig?.address
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -63,138 +27,200 @@ export default function WorkspacePage() {
                   SafeStream
                 </div>
               </Link>
-
-              <nav className="hidden md:flex items-center gap-6">
-                <Link
-                  href="/workspace"
-                  className="text-sm font-medium text-foreground hover:text-[#0070BA] transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/workspace/signatures"
-                  className="text-sm font-medium text-muted-foreground hover:text-[#0070BA] transition-colors relative"
-                >
-                  Signatures
-                  {pendingSignaturesCount > 0 && (
-                    <span className="absolute -top-1 -right-3 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {pendingSignaturesCount}
-                    </span>
-                  )}
-                </Link>
-                <Link
-                  href="/workspace/settings"
-                  className="text-sm font-medium text-muted-foreground hover:text-[#0070BA] transition-colors"
-                >
-                  Settings
-                </Link>
-              </nav>
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Safe Info */}
-              <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#0070BA]/10 border border-[#0070BA]/20 rounded-lg">
-                <Shield className="h-4 w-4 text-[#0070BA]" />
-                <div className="text-xs">
-                  <div className="text-muted-foreground">Safe Wallet</div>
-                  <div className="font-mono font-medium">{safeAddress}</div>
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <Link href="/workspace/signatures">
-                <Button variant="outline" size="icon" className="relative">
-                  <Bell className="h-4 w-4" />
-                  {pendingSignaturesCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {pendingSignaturesCount}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-
               <ConnectButton />
             </div>
           </div>
         </div>
       </div>
 
-      <main className="container mx-auto px-6 py-8 space-y-8">
-        {/* Safe Wallet Banner */}
-        <Card className="border-2 border-[#0070BA]/50 bg-gradient-to-r from-[#0070BA]/10 to-[#009CDE]/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#0070BA] rounded-full flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <div className="font-semibold text-lg">Safe Multisig Active</div>
-                  <div className="text-sm text-muted-foreground">
-                    All payroll operations require multiple signatures for security
-                  </div>
-                </div>
-              </div>
-              {pendingSignaturesCount > 0 && (
-                <Link href="/workspace/signatures">
-                  <Button className="bg-[#0070BA] hover:bg-[#005A94]">
-                    <Bell className="mr-2 h-4 w-4" />
-                    {pendingSignaturesCount} Pending Signature{pendingSignaturesCount > 1 ? "s" : ""}
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Workspace Info */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Workspace Dashboard</h1>
-          <p className="text-muted-foreground">
-            Manage your team's payroll streams with enterprise-grade security
+      <main className="container mx-auto px-6 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
+            Choose Your Workspace
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            Select the right mode for your payroll streaming needs
           </p>
         </div>
 
-        {/* Superfluid Dashboard */}
-        <SuperfluidDashboard />
-
-        {/* Upgrade/Downgrade Card */}
-        <UpgradeDowngradeCard />
-
-        {/* Active Streams */}
-        <StreamsList />
-
-        {/* Employee Management */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>
-                  Add employees and manage their payment streams
+        {/* Workspace Options */}
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {/* Single Wallet Option */}
+          <Card className="border-2 hover:border-green-300 transition-colors cursor-pointer group">
+            <Link href="/workspace/single">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition-colors">
+                  <Wallet className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-2xl text-green-700">Single Wallet</CardTitle>
+                <CardDescription className="text-base">
+                  Fast and simple payroll management with your connected wallet
                 </CardDescription>
-              </div>
-              <AddEmployeeDialog />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <EmployeeList
-              onStartStream={handleStartStream}
-              onStopStream={handleStopStream}
-            />
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <Badge variant="outline" className="text-green-700 border-green-300">
+                    <Zap className="mr-1 h-3 w-3" />
+                    Instant Execution
+                  </Badge>
+                  <Badge variant="outline" className="text-green-700 border-green-300">
+                    <DollarSign className="mr-1 h-3 w-3" />
+                    Low Gas Fees
+                  </Badge>
+                </div>
 
-        {/* Start Stream Dialog */}
-        <StartStreamDialog
-          employee={selectedEmployee}
-          open={streamDialogOpen}
-          onClose={() => {
-            setStreamDialogOpen(false)
-            setSelectedEmployee(null)
-          }}
-        />
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Perfect for:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Individual use</li>
+                    <li>• Small teams</li>
+                    <li>• Quick operations</li>
+                  </ul>
+                </div>
+
+                <div className="pt-4 text-center">
+                  <Button className="bg-green-600 hover:bg-green-700 text-white group-hover:bg-green-700">
+                    Start with Single Wallet
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+
+          {/* Multisig Option */}
+          <Card className="border-2 hover:border-[#0070BA] transition-colors cursor-pointer group">
+            <Link href="/workspace/multisig">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-[#0070BA]/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-[#0070BA]/20 transition-colors">
+                  <Shield className="h-8 w-8 text-[#0070BA]" />
+                </div>
+                <CardTitle className="text-2xl text-[#0070BA]">Safe Multisig</CardTitle>
+                <CardDescription className="text-base">
+                  Enterprise-grade security with multi-signature wallet protection
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <Badge variant="outline" className="text-[#0070BA] border-[#0070BA]/30">
+                    <Lock className="mr-1 h-3 w-3" />
+                    Secure
+                  </Badge>
+                  <Badge variant="outline" className="text-[#0070BA] border-[#0070BA]/30">
+                    <Users className="mr-1 h-3 w-3" />
+                    Team-based
+                  </Badge>
+                  {isSafeConfigured && (
+                    <Badge variant="outline" className="text-green-600 border-green-300">
+                      ✓ Configured
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Perfect for:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Large organizations</li>
+                    <li>• Team oversight</li>
+                    <li>• Enhanced security</li>
+                  </ul>
+                </div>
+
+                <div className="pt-4 text-center">
+                  <Button className="bg-[#0070BA] hover:bg-[#005A94] text-white group-hover:bg-[#005A94]">
+                    {isSafeConfigured ? 'Open Multisig Workspace' : 'Setup Safe Multisig'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+        </div>
+
+        {/* Current Status */}
+        {address && (
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm text-muted-foreground">
+                Connected: {address.slice(0, 6)}...{address.slice(-4)}
+              </span>
+              {isSafeConfigured && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-sm text-muted-foreground">
+                    Safe: {safeConfig.address.slice(0, 6)}...{safeConfig.address.slice(-4)}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Features Overview */}
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-center mb-8">Why Choose SafeStream?</h2>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Zap className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Real-time Streaming</h3>
+              <p className="text-sm text-muted-foreground">
+                Continuous payment flows using Superfluid protocol
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Enterprise Security</h3>
+              <p className="text-sm text-muted-foreground">
+                Multi-signature protection for large organizations
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Team Management</h3>
+              <p className="text-sm text-muted-foreground">
+                Easy employee onboarding and stream management
+              </p>
+            </div>
+          </div>
+        </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              © 2025 SafeStream. Powered by PayPal USD & Superfluid.
+            </div>
+            <div className="flex gap-6 text-sm">
+              <Link href="/workspace/single" className="hover:text-[#0070BA] transition-colors">
+                Single Wallet
+              </Link>
+              <Link href="/workspace/multisig" className="hover:text-[#0070BA] transition-colors">
+                Safe Multisig
+              </Link>
+              <Link href="/register" className="hover:text-[#0070BA] transition-colors">
+                Register
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

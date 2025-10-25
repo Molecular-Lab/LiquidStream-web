@@ -22,7 +22,7 @@ interface StreamInfoCardProps {
 export function StreamInfoCard({ sender, receiver, token = PYUSDX_ADDRESS, className }: StreamInfoCardProps) {
   const { address } = useAccount()
   const effectiveSender = sender || address
-  const { streamInfo, loading, error } = useStreamInfo(token, effectiveSender, receiver)
+  const { data: streamInfo, isLoading: loading, error } = useStreamInfo(token, effectiveSender, receiver)
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -47,7 +47,7 @@ export function StreamInfoCard({ sender, receiver, token = PYUSDX_ADDRESS, class
     return (
       <Card className={cn("border-red-500", className)}>
         <CardContent className="pt-6 text-center text-red-600">
-          Error loading stream: {error}
+          Error loading stream: {error.message}
         </CardContent>
       </Card>
     )

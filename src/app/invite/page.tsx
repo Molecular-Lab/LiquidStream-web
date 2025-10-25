@@ -43,7 +43,7 @@ export default function InvitePage() {
       try {
         // TODO: Fetch invitation details from your backend/API
         // This would validate the token and return workspace info
-        
+
         await new Promise((resolve) => setTimeout(resolve, 1000))
 
         // Mock data
@@ -152,9 +152,9 @@ export default function InvitePage() {
           <div className="w-20 h-20 bg-[#0070BA]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="h-10 w-10 text-[#0070BA]" />
           </div>
-          <h1 className="text-4xl font-bold mb-2">You're Invited!</h1>
+          <h1 className="text-4xl font-bold mb-2">You&apos;re Invited!</h1>
           <p className="text-xl text-muted-foreground">
-            Join {invitation.companyName}'s payroll workspace
+            Join {invitation.companyName}&apos;s payroll workspace
           </p>
         </div>
 
@@ -163,7 +163,7 @@ export default function InvitePage() {
           <CardHeader>
             <CardTitle>Workspace Details</CardTitle>
             <CardDescription>
-              You've been invited by {invitation.invitedBy}
+              You&apos;ve been invited by {invitation.invitedBy}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -190,7 +190,7 @@ export default function InvitePage() {
                 <div className="flex-1">
                   <div className="font-semibold mb-1">Multisig Signer</div>
                   <div className="text-sm text-muted-foreground">
-                    You'll be one of {invitation.totalSigners} signers. {invitation.requiredSignatures} signatures
+                    You&apos;ll be one of {invitation.totalSigners} signers. {invitation.requiredSignatures} signatures
                     required to execute payroll transactions.
                   </div>
                 </div>

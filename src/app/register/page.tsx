@@ -81,7 +81,7 @@ export default function RegisterPage() {
 
   const handleFinalSubmit = async () => {
     setIsSubmitting(true)
-    
+
     try {
       // Save workspace data to Zustand store (also syncs to sessionStorage)
       const workspaceData = {
@@ -89,18 +89,18 @@ export default function RegisterPage() {
         team: teamMembers,
         createdAt: new Date().toISOString(),
       }
-      
+
       setRegistration(workspaceData)
-      
+
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
-      
+
       // TODO: Send invitation emails to team members
-      
+
       toast.success("Workspace created successfully!", {
         description: "Redirecting to Safe wallet setup...",
       })
-      
+
       // Redirect to Safe setup page
       setTimeout(() => {
         router.push("/setup-safe")
@@ -139,11 +139,10 @@ export default function RegisterPage() {
           <div className="flex items-center justify-between mb-12">
             <div className="flex flex-col items-center flex-1">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                  step === "company"
+                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${step === "company"
                     ? "bg-[#0070BA] text-white"
                     : "bg-[#0070BA]/20 text-[#0070BA]"
-                }`}
+                  }`}
               >
                 1
               </div>
@@ -152,11 +151,10 @@ export default function RegisterPage() {
             <div className="flex-1 h-1 bg-border mx-4" />
             <div className="flex flex-col items-center flex-1">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                  step === "team" || step === "invite"
+                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${step === "team" || step === "invite"
                     ? "bg-[#0070BA] text-white"
                     : "bg-border text-muted-foreground"
-                }`}
+                  }`}
               >
                 2
               </div>
@@ -165,11 +163,10 @@ export default function RegisterPage() {
             <div className="flex-1 h-1 bg-border mx-4" />
             <div className="flex flex-col items-center flex-1">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                  step === "invite"
+                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${step === "invite"
                     ? "bg-[#0070BA] text-white"
                     : "bg-border text-muted-foreground"
-                }`}
+                  }`}
               >
                 3
               </div>
@@ -431,7 +428,7 @@ export default function RegisterPage() {
                     <div className="font-semibold mb-2">Next Steps:</div>
                     <ul className="space-y-1 text-muted-foreground">
                       <li>• Invitation emails will be sent to all team members</li>
-                      <li>• You'll be redirected to set up your Safe multisig wallet</li>
+                      <li>• You&apos;ll be redirected to set up your Safe multisig wallet</li>
                       <li>• Team members will need to join and sign to activate the Safe</li>
                     </ul>
                   </div>

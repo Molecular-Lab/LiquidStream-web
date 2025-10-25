@@ -49,8 +49,8 @@ export default function SetupSafePage() {
   const router = useRouter()
   const { address, isConnected, chain } = useAccount()
   const { registration: workspaceData, getOperators } = useWorkspace()
-  const { setSafeConfig } = useSafe()
-  
+  const { setSafeConfig } = useSafeConfig()
+
   const [isCreating, setIsCreating] = useState(false)
   const [safeCreated, setSafeCreated] = useState(false)
   const [safeAddress, setSafeAddress] = useState("")
@@ -69,7 +69,7 @@ export default function SetupSafePage() {
     if (workspaceData) {
       const operators = getOperators()
       setAvailableOperators(operators)
-      
+
       if (operators.length > 0) {
         toast.success(`Loaded ${operators.length} operators from workspace`)
       }
@@ -78,12 +78,12 @@ export default function SetupSafePage() {
 
   // Update owner address when wallet connects
   useEffect(() => {
-    if (address && signers[0]) {
+    if (address && signers[0] && signers[0].address !== address) {
       const updated = [...signers]
       updated[0].address = address
       setSigners(updated)
     }
-  }, [address])
+  }, [address]) // Remove signers from dependency array
 
   const addOperatorAsSigner = (operator: TeamMember) => {
     // Check if already added
@@ -102,13 +102,13 @@ export default function SetupSafePage() {
     }
 
     setSigners([...signers, newSigner])
-    
+
     // Auto-adjust threshold
     const newSignerCount = signers.length + 1
     if (threshold === 1 && newSignerCount > 1) {
       setThreshold(2) // Recommend at least 2 signatures
     }
-    
+
     toast.success(`Added ${operator.name} as signer`)
   }
 
@@ -154,18 +154,86 @@ export default function SetupSafePage() {
     setIsCreating(true)
 
     try {
-      // TODO: Integrate with Safe SDK to create multisig
-      // Example flow:
-      // 1. Import Safe SDK
-      // 2. Configure Safe with signers and threshold
-      // 3. Deploy Safe contract
-      // 4. Get Safe address
-      
-      // Simulate Safe creation
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-      
-      const mockSafeAddress = "0x" + Math.random().toString(16).slice(2, 42)
-      setSafeAddress(mockSafeAddress)
+      toast.info("Creating Safe wallet...")
+
+      // Initialize Safe with predicted configuration
+      const protocolKit = await Safe.init({
+        provider: window.ethereum as any,
+        signer: walletClient.account.address,
+        predictedSafe: {
+          safeAccountConfig: {
+            owners: signers.map(s => s.address),
+            threshold: threshold,
+          },
+        },
+      })
+
+      // Get the predicted Safe address
+      const predictedAddress = await protocolKit.getAddress()
+
+      console.log("🔐 Safe Wallet Address:", predictedAddress)
+      console.log("📋 Owners:", signers.map(s => s.address))
+      console.log("🔢 Threshold:", threshold)
+
+      toast.info(`Safe address: ${predictedAddress.slice(0, 10)}... Deploying contract...`)
+
+      // Check if Safe is already deployed
+      const isDeployed = await protocolKit.isSafeDeployed()
+
+      let finalDeploymentStatus = isDeployed
+
+      if (!isDeployed) {
+        // Deploy the Safe
+        const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction()
+
+        toast.info("Deploying Safe contract...")
+
+        // Execute deployment transaction using wagmi
+        const txHash = await new Promise<string>((resolve, reject) => {
+          sendTransaction(
+            {
+              to: deploymentTransaction.to as `0x${string}`,
+              data: deploymentTransaction.data as `0x${string}`,
+            },
+            {
+              onSuccess: (hash) => resolve(hash),
+              onError: (error) => reject(error),
+            }
+          )
+        })
+
+        toast.info(`Transaction submitted: ${txHash.slice(0, 10)}... Waiting for confirmation...`)
+
+        // Wait for deployment to be confirmed (longer delay for Sepolia)
+        await new Promise(resolve => setTimeout(resolve, 15000))
+
+        // Verify deployment multiple times
+        let attempts = 0
+        let deployed = false
+
+        while (attempts < 3 && !deployed) {
+          deployed = await protocolKit.isSafeDeployed()
+          if (!deployed) {
+            console.log(`⏳ Deployment check ${attempts + 1}/3 - not confirmed yet, waiting...`)
+            await new Promise(resolve => setTimeout(resolve, 5000))
+          }
+          attempts++
+        }
+
+        finalDeploymentStatus = deployed
+
+        if (!deployed) {
+          console.warn("⚠️ Safe deployment not confirmed after 3 attempts")
+          toast.warning("Safe deployment is taking longer than expected. You may need to refresh after deployment completes.")
+        } else {
+          console.log("✅ Safe deployment confirmed on-chain")
+          toast.success("Safe deployed successfully!")
+        }
+      } else {
+        console.log("ℹ️ Safe already deployed at:", predictedAddress)
+      }
+
+      setSafeAddress(predictedAddress)
       setSafeCreated(true)
 
       // Save Safe configuration to Zustand store
@@ -203,7 +271,13 @@ export default function SetupSafePage() {
   }
 
   const handleContinueToDashboard = () => {
-    router.push("/workspace")
+    toast.success("Safe wallet activated!", {
+      description: `Your workspace will now operate through Safe multisig at ${safeAddress.slice(0, 10)}...`,
+    })
+
+    setTimeout(() => {
+      router.push("/workspace")
+    }, 1000)
   }
 
   return (
@@ -230,7 +304,7 @@ export default function SetupSafePage() {
               Set up enterprise-grade security for your payroll operations. Multiple signatures
               required for all transactions.
             </p>
-            
+
             {/* Workspace Info Banner */}
             {workspaceData && (
               <div className="mt-6 max-w-md mx-auto">
@@ -264,7 +338,7 @@ export default function SetupSafePage() {
                   {/* Owner (Current User) */}
                   <div className="space-y-4">
                     <Label className="text-base font-semibold">Signers</Label>
-                    
+
                     <div className="p-4 bg-[#0070BA]/10 border border-[#0070BA]/20 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-medium">Owner (You)</div>
@@ -425,29 +499,26 @@ export default function SetupSafePage() {
 
                       <div className="grid grid-cols-3 gap-2 text-center text-xs">
                         <div
-                          className={`p-2 rounded ${
-                            threshold === 1
+                          className={`p-2 rounded ${threshold === 1
                               ? "bg-orange-100 text-orange-700 border border-orange-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Low Security
                         </div>
                         <div
-                          className={`p-2 rounded ${
-                            threshold > 1 && threshold < signers.length
+                          className={`p-2 rounded ${threshold > 1 && threshold < signers.length
                               ? "bg-green-100 text-green-700 border border-green-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Recommended
                         </div>
                         <div
-                          className={`p-2 rounded ${
-                            threshold === signers.length
+                          className={`p-2 rounded ${threshold === signers.length
                               ? "bg-blue-100 text-blue-700 border border-blue-300"
                               : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           Maximum Security
                         </div>
@@ -562,6 +633,19 @@ export default function SetupSafePage() {
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Shield className="h-4 w-4" />
                     {threshold} of {signers.length} signatures required
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                  <div className="text-sm space-y-2">
+                    <div className="font-semibold text-orange-900 dark:text-orange-100 flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Important: Your Safe is Now Active
+                    </div>
+                    <div className="text-orange-800 dark:text-orange-200">
+                      All payroll operations will now require {threshold} of {signers.length} signatures.
+                      Your Safe wallet is now the primary account for all transactions.
+                    </div>
                   </div>
                 </div>
 

@@ -1,17 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Address, formatUnits, parseUnits } from "viem"
+import { Address, formatUnits, parseUnits, encodeFunctionData } from "viem"
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi"
-import { ArrowDownUp, ArrowDown, ArrowUp, Loader2 } from "lucide-react"
+import { ArrowDownUp, ArrowDown, ArrowUp, Loader2, Shield, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
+import { useSafeConfig } from "@/store/safe"
+import { useSafeTokenOperations } from "@/hooks/use-safe-operations"
+import { useSafeAppsTokenOperations } from "@/hooks/use-safe-apps-sdk"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
@@ -26,111 +30,173 @@ export function UpgradeDowngradeCard() {
   const [mode, setMode] = useState<"upgrade" | "downgrade">("upgrade")
   const [amount, setAmount] = useState("")
   const [isApproving, setIsApproving] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const { writeContractAsync } = useWriteContract()
   const publicClient = usePublicClient()
+  const { safeConfig, isSigner } = useSafeConfig()
+  const { mutate: createSafeTokenTransaction, isPending: isSafeOperationPending } = useSafeTokenOperations()
+  const { mutate: createSafeAppsTransaction, isPending: isSafeAppsPending } = useSafeAppsTokenOperations()
 
-  // Read PYUSD balance
+  const isSafeConfigured = !!safeConfig?.address
+  const isUserSigner = address ? isSigner(address) : false
+
+  // Use Safe address or connected wallet address for balance queries
+  const queryAddress = (safeConfig?.address || address) as Address | undefined
+
+  // Read PYUSD balance (from Safe or connected wallet)
   const { data: pyusdBalance } = useReadContract({
     address: PYUSD_ADDRESS,
     abi: PYUSD_ABI,
     functionName: "balanceOf",
-    args: address ? [address] : undefined,
+    args: queryAddress ? [queryAddress] : undefined,
   })
 
-  // Read PYUSDx balance
+  // Read PYUSDx balance (from Safe or connected wallet)
   const { data: pyusdxBalance } = useReadContract({
     address: PYUSDX_ADDRESS,
     abi: SUPER_TOKEN_ABI,
     functionName: "balanceOf",
-    args: address ? [address] : undefined,
+    args: queryAddress ? [queryAddress] : undefined,
   })
 
-  // Read PYUSD allowance
+  // Read PYUSD allowance (from Safe or connected wallet)
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: PYUSD_ADDRESS,
     abi: PYUSD_ABI,
     functionName: "allowance",
-    args: address ? [address, PYUSDX_ADDRESS] : undefined,
+    args: queryAddress ? [queryAddress, PYUSDX_ADDRESS] : undefined,
   })
 
   const handleUpgrade = async () => {
     if (!address || !amount || !publicClient) return
 
     try {
+      setIsProcessing(true)
       const amountInUnits = parseUnits(amount, 6) // PYUSD has 6 decimals
 
-      // Check if we need approval
-      if (!allowance || allowance < amountInUnits) {
-        toast.info("Step 1/2: Approving PYUSD...")
-        setIsApproving(true)
+      if (isSafeConfigured) {
+        // Safe multisig workflow using Safe Apps SDK
+        if (!isUserSigner) {
+          toast.error("You are not authorized to create transactions for this Safe")
+          return
+        }
 
-        const approveTx = await writeContractAsync({
-          address: PYUSD_ADDRESS,
-          abi: PYUSD_ABI,
-          functionName: "approve",
-          args: [PYUSDX_ADDRESS, amountInUnits],
+        // Check if we need approval first
+        const needsApproval = !allowance || allowance < amountInUnits
+        
+        console.log("Safe upgrade process:", {
+          amountToUpgrade: amount,
+          amountInUnits: amountInUnits.toString(),
+          currentAllowance: allowance?.toString() || "0",
+          needsApproval
+        })
+
+        if (needsApproval) {
+          // Create approval transaction using Safe Apps SDK
+          console.log("Creating approval transaction via Safe Apps SDK...")
+          createSafeAppsTransaction({
+            operation: "approve",
+            tokenAddress: PYUSD_ADDRESS,
+            amount: amountInUnits,
+            tokenSymbol: "PYUSD",
+            spenderAddress: PYUSDX_ADDRESS,
+          })
+
+          toast.info("Approval transaction created in Safe", {
+            description: `Approve the transaction in Safe, then return to upgrade.`,
+          })
+          return
+        }
+
+        // Approval already exists, create upgrade-only transaction
+        console.log("Creating Safe upgrade transaction via Safe Apps SDK:", {
+          operation: "upgrade-only",
+          tokenAddress: PYUSDX_ADDRESS,
+          amountInUnits: amountInUnits.toString(),
+          upgradeAmount: (amountInUnits * BigInt(10 ** 12)).toString(),
+          tokenSymbol: "PYUSD",
+          originalAmount: amount
+        })
+
+        createSafeAppsTransaction({
+          operation: "upgrade-only",
+          tokenAddress: PYUSDX_ADDRESS,
+          amount: amountInUnits * BigInt(10 ** 12), // 18 decimals for PYUSDx upgrade
+          tokenSymbol: "PYUSD",
+        })
+
+      } else {
+        // Direct wallet workflow (fallback)
+        // Check if we need approval
+        if (!allowance || allowance < amountInUnits) {
+          toast.info("Step 1/2: Approving PYUSD...")
+          setIsApproving(true)
+
+          const approveTx = await writeContractAsync({
+            address: PYUSD_ADDRESS,
+            abi: PYUSD_ABI,
+            functionName: "approve",
+            args: [PYUSDX_ADDRESS, amountInUnits],
+          } as any)
+
+          toast.info("Waiting for approval confirmation...")
+
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: approveTx,
+            confirmations: 1,
+          })
+
+          if (receipt.status === 'success') {
+            toast.success("Approval confirmed! ✅")
+            await refetchAllowance()
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          } else {
+            throw new Error("Approval transaction failed")
+          }
+
+          setIsApproving(false)
+        }
+
+        // Convert 6 decimal to 18 decimal for upgrade
+        const upgradeAmount = amountInUnits * BigInt(10 ** 12)
+
+        toast.info("Step 2/2: Upgrading PYUSD to PYUSDx...")
+
+        const upgradeTx = await writeContractAsync({
+          address: PYUSDX_ADDRESS,
+          abi: SUPER_TOKEN_ABI,
+          functionName: "upgrade",
+          args: [upgradeAmount],
         } as any)
 
-        toast.info("Waiting for approval confirmation...")
-        
-        // Wait for the approval transaction to be mined
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: approveTx,
+        toast.info("Waiting for upgrade confirmation...")
+
+        const upgradeReceipt = await publicClient.waitForTransactionReceipt({
+          hash: upgradeTx,
           confirmations: 1,
         })
 
-        if (receipt.status === 'success') {
-          toast.success("Approval confirmed! ✅")
-          
-          // Refetch allowance to confirm
-          await refetchAllowance()
-          
-          // Small delay to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 1000))
+        if (upgradeReceipt.status === 'success') {
+          toast.success("Upgrade successful! 🎉", {
+            description: `Wrapped ${amount} PYUSD to PYUSDx`,
+          })
         } else {
-          throw new Error("Approval transaction failed")
+          throw new Error("Upgrade transaction failed")
         }
-        
-        setIsApproving(false)
-      }
-
-      // Convert 6 decimal to 18 decimal for upgrade
-      const upgradeAmount = amountInUnits * BigInt(10 ** 12) // 18 - 6 = 12
-
-      toast.info("Step 2/2: Upgrading PYUSD to PYUSDx...")
-      
-      const upgradeTx = await writeContractAsync({
-        address: PYUSDX_ADDRESS,
-        abi: SUPER_TOKEN_ABI,
-        functionName: "upgrade",
-        args: [upgradeAmount],
-      } as any)
-
-      toast.info("Waiting for upgrade confirmation...")
-      
-      // Wait for upgrade transaction to be mined
-      const upgradeReceipt = await publicClient.waitForTransactionReceipt({
-        hash: upgradeTx,
-        confirmations: 1,
-      })
-
-      if (upgradeReceipt.status === 'success') {
-        toast.success("Upgrade successful! 🎉", {
-          description: `Wrapped ${amount} PYUSD to PYUSDx`,
-        })
-      } else {
-        throw new Error("Upgrade transaction failed")
       }
 
       setAmount("")
     } catch (error: any) {
       console.error("Upgrade error:", error)
       toast.error("Upgrade failed", {
-        description: error.shortMessage || error.message || "Please try again",
+        description: error.message.includes('not in an iframe')
+          ? 'Safe Apps SDK requires running inside Safe interface.'
+          : error.shortMessage || error.message || "Please try again",
       })
     } finally {
       setIsApproving(false)
+      setIsProcessing(false)
     }
   }
 
@@ -138,27 +204,57 @@ export function UpgradeDowngradeCard() {
     if (!address || !amount) return
 
     try {
+      setIsProcessing(true)
       const amountInUnits = parseUnits(amount, 18) // PYUSDx has 18 decimals
 
-      toast.info("Downgrading PYUSDx to PYUSD...")
-      
-      const downgradeTx = await writeContractAsync({
-        address: PYUSDX_ADDRESS,
-        abi: SUPER_TOKEN_ABI,
-        functionName: "downgrade",
-        args: [amountInUnits],
-      } as any)
+      if (isSafeConfigured) {
+        // Safe multisig workflow using Safe Apps SDK
+        if (!isUserSigner) {
+          toast.error("You are not authorized to create transactions for this Safe")
+          return
+        }
 
-      toast.success("Downgrade successful! 🎉", {
-        description: `Unwrapped ${amount} PYUSDx to PYUSD`,
-      })
+        // Create downgrade transaction using Safe Apps SDK
+        console.log("Creating Safe downgrade transaction via Safe Apps SDK:", {
+          operation: "downgrade",
+          tokenAddress: PYUSDX_ADDRESS,
+          amount: amountInUnits.toString(),
+          tokenSymbol: "PYUSDx"
+        })
+
+        createSafeAppsTransaction({
+          operation: "downgrade",
+          tokenAddress: PYUSDX_ADDRESS,
+          amount: amountInUnits,
+          tokenSymbol: "PYUSDx",
+        })
+
+      } else {
+        // Direct wallet workflow (fallback)
+        toast.info("Downgrading PYUSDx to PYUSD...")
+
+        const downgradeTx = await writeContractAsync({
+          address: PYUSDX_ADDRESS,
+          abi: SUPER_TOKEN_ABI,
+          functionName: "downgrade",
+          args: [amountInUnits],
+        } as any)
+
+        toast.success("Downgrade successful! 🎉", {
+          description: `Unwrapped ${amount} PYUSDx to PYUSD`,
+        })
+      }
 
       setAmount("")
     } catch (error: any) {
       console.error("Downgrade error:", error)
       toast.error("Downgrade failed", {
-        description: error.message || "Please try again",
+        description: error.message.includes('not in an iframe')
+          ? 'Safe Apps SDK requires running inside Safe interface.'
+          : error.message || "Please try again",
       })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -185,12 +281,43 @@ export function UpgradeDowngradeCard() {
         <CardTitle className="flex items-center gap-2">
           <ArrowDownUp className="h-5 w-5" />
           Swap Tokens
+          {isSafeConfigured ? (
+            <Badge variant="secondary" className="text-xs">
+              <Shield className="h-3 w-3 mr-1" />
+              Safe Protected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Direct Wallet
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
-          Upgrade PYUSD to PYUSDx (wrap) or downgrade PYUSDx to PYUSD (unwrap)
+          {isSafeConfigured
+            ? `Create proposals to upgrade PYUSD to PYUSDx (wrap) or downgrade PYUSDx to PYUSD (unwrap) - requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures`
+            : "Upgrade PYUSD to PYUSDx (wrap) or downgrade PYUSDx to PYUSD (unwrap)"
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Safe Info Banner */}
+        {isSafeConfigured && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-4">
+            <div className="flex items-start gap-3">
+              <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="font-medium text-blue-900 dark:text-blue-100 text-sm">
+                  Safe Multisig Operations
+                </div>
+                <div className="text-blue-800 dark:text-blue-200 text-xs">
+                  Token operations will create transaction proposals requiring {safeConfig.threshold} out of {safeConfig.signers.length} signatures.
+                  Balances shown are from Safe wallet: {safeConfig.address.slice(0, 10)}...{safeConfig.address.slice(-6)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* From Token */}
         <div className="space-y-2">
           <Label>From</Label>
@@ -275,24 +402,46 @@ export function UpgradeDowngradeCard() {
           className="w-full"
           size="lg"
           onClick={isUpgradeMode ? handleUpgrade : handleDowngrade}
-          disabled={!address || !amount || parseFloat(amount) <= 0 || isApproving}
+          disabled={!address || !amount || parseFloat(amount) <= 0 || isApproving || isProcessing || isSafeAppsPending || (isSafeConfigured && !isUserSigner)}
         >
           {isApproving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Approving...
             </>
-          ) : isUpgradeMode ? (
-            "Upgrade to PYUSDx"
+          ) : isProcessing || isSafeAppsPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isSafeConfigured ? "Creating Safe Transaction..." : "Processing..."}
+            </>
+          ) : isSafeConfigured ? (
+            isUpgradeMode ? "Create Upgrade Transaction" : "Create Downgrade Transaction"
           ) : (
-            "Downgrade to PYUSD"
+            isUpgradeMode ? "Upgrade to PYUSDx" : "Downgrade to PYUSD"
           )}
         </Button>
 
-        {/* Warning */}
+        {/* Authorization Warning for Safe */}
+        {isSafeConfigured && !isUserSigner && (
+          <div className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
+            ⚠️ You are not authorized to create transactions for this Safe wallet. Only configured signers can propose token operations.
+          </div>
+        )}
+
+        {/* Info Warning */}
         {isUpgradeMode && (
           <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-            💡 Upgrading wraps your PYUSD into PYUSDx SuperToken, which enables real-time streaming capabilities.
+            💡 {isSafeConfigured
+              ? "Upgrading will create a transaction in your Safe queue to wrap PYUSD into PYUSDx SuperToken, enabling real-time streaming capabilities after multisig approval."
+              : "Upgrading wraps your PYUSD into PYUSDx SuperToken, which enables real-time streaming capabilities."
+            }
+          </div>
+        )}
+
+        {/* Safe Apps SDK Info */}
+        {isSafeConfigured && (
+          <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            🔗 This app uses Safe Apps SDK to create transactions directly in your Safe interface. Transactions will appear in your Safe&apos;s queue for signing and execution.
           </div>
         )}
       </CardContent>

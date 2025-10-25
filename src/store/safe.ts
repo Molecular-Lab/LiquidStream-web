@@ -10,7 +10,7 @@ export interface SafeSigner {
 
 export interface PendingTransaction {
   id: string
-  type: "start_stream" | "stop_stream" | "transfer" | "other"
+  type: "start_stream" | "stop_stream" | "transfer" | "upgrade_token" | "batch_operations" | "other"
   description: string
   to: string
   value?: string
@@ -21,6 +21,14 @@ export interface PendingTransaction {
   createdBy: string
   status: "pending" | "ready" | "executed" | "rejected"
   nonce: number
+  // Enhanced fields for Safe transactions
+  safeTransactionHash?: string  // Safe transaction hash for off-chain tracking
+  txHash?: string              // On-chain transaction hash after execution
+  employeeId?: string          // Associated employee for stream operations
+  employeeName?: string        // Employee name for UI display
+  tokenSymbol?: string         // Token being used
+  flowRate?: string           // Stream flow rate
+  isMultiOperation?: boolean   // Whether this is a batch operation
 }
 
 export interface SafeConfig {

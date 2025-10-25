@@ -1,15 +1,69 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Shield, Zap, Users, CheckCircle2, Clock, DollarSign } from "lucide-react"
+import { ArrowRight, Shield, Zap, Users, CheckCircle2, Clock, DollarSign, Info } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Home() {
+  const [safeContext, setSafeContext] = useState<any>(null)
+  const [isInSafe, setIsInSafe] = useState(false)
+
+  useEffect(() => {
+    // Check if we're in Safe context
+    const checkSafeContext = () => {
+      const inSafe = window.parent !== window
+      setIsInSafe(inSafe)
+
+      // Check for Safe context info
+      const safeInfo = (window as any).__SAFE_CONTEXT__
+      if (safeInfo) {
+        setSafeContext(safeInfo)
+      }
+    }
+
+    checkSafeContext()
+
+    // Check periodically for Safe context updates
+    const interval = setInterval(checkSafeContext, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      {/* Safe App Status */}
+      {isInSafe && (
+        <div className="bg-green-50 border-b border-green-200">
+          <div className="container mx-auto px-6 py-3">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">Safe App Connected</span>
+              {safeContext && (
+                <span className="text-sm">
+                  Safe: {safeContext.safeAddress.slice(0, 10)}... | Chain: {safeContext.chainId}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isInSafe && (
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="container mx-auto px-6 py-3">
+            <div className="flex items-center gap-2 text-blue-800">
+              <Info className="h-5 w-5" />
+              <span className="font-medium">Safe App Integration Available</span>
+              <span className="text-sm">
+                Add this app to your Safe at: {typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-20">
         <div className="text-center space-y-8 max-w-4xl mx-auto">
@@ -18,19 +72,19 @@ export default function Home() {
               Powered by PayPal USD & Superfluid
             </span>
           </div>
-          
+
           <h1 className="text-6xl md:text-7xl font-bold tracking-tight">
             Real-Time Stablecoin
             <span className="block bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
               Payroll Streaming
             </span>
           </h1>
-          
+
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Pay your employees every second they work. Built with Safe multisig security 
+            Pay your employees every second they work. Built with Safe multisig security
             and PYUSD stablecoin for enterprise payroll operations.
           </p>
-          
+
           <div className="flex gap-4 justify-center">
             <Link href="/register">
               <Button size="lg" className="bg-[#0070BA] hover:bg-[#005A94] text-lg h-14 px-8">
@@ -86,8 +140,8 @@ export default function Home() {
               </div>
               <CardTitle>Real-Time Streaming</CardTitle>
               <CardDescription>
-                Money flows continuously to employees. No more waiting for payday - 
-                access earnings as they're earned.
+                Money flows continuously to employees. No more waiting for payday -
+                access earnings as they&apos;re earned.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -99,7 +153,7 @@ export default function Home() {
               </div>
               <CardTitle>Safe Multisig Security</CardTitle>
               <CardDescription>
-                Enterprise-grade security with Gnosis Safe. Multiple signers required 
+                Enterprise-grade security with Gnosis Safe. Multiple signers required
                 for all payroll operations.
               </CardDescription>
             </CardHeader>
@@ -112,7 +166,7 @@ export default function Home() {
               </div>
               <CardTitle>Team Collaboration</CardTitle>
               <CardDescription>
-                Invite operation team members as signers. Approve payroll changes 
+                Invite operation team members as signers. Approve payroll changes
                 together with built-in governance.
               </CardDescription>
             </CardHeader>
@@ -139,7 +193,7 @@ export default function Home() {
                 <div>
                   <CardTitle>Register Your Workspace</CardTitle>
                   <CardDescription className="mt-2">
-                    Create your company workspace and invite your operation team members 
+                    Create your company workspace and invite your operation team members
                     who will help manage payroll.
                   </CardDescription>
                 </div>
@@ -156,7 +210,7 @@ export default function Home() {
                 <div>
                   <CardTitle>Create Safe Multisig Wallet</CardTitle>
                   <CardDescription className="mt-2">
-                    Set up a Gnosis Safe wallet with your operation team as signers. 
+                    Set up a Gnosis Safe wallet with your operation team as signers.
                     Configure signature threshold for security.
                   </CardDescription>
                 </div>
@@ -173,7 +227,7 @@ export default function Home() {
                 <div>
                   <CardTitle>Add Your Team</CardTitle>
                   <CardDescription className="mt-2">
-                    Add employees, set their salaries, and configure payment schedules. 
+                    Add employees, set their salaries, and configure payment schedules.
                     All changes require multisig approval.
                   </CardDescription>
                 </div>
@@ -190,7 +244,7 @@ export default function Home() {
                 <div>
                   <CardTitle>Start Streaming</CardTitle>
                   <CardDescription className="mt-2">
-                    Approve streams with your operation team signatures. Money flows 
+                    Approve streams with your operation team signatures. Money flows
                     continuously to employees in real-time.
                   </CardDescription>
                 </div>
@@ -211,7 +265,7 @@ export default function Home() {
                 <div>
                   <div className="font-semibold">For Employers</div>
                   <div className="text-sm text-muted-foreground">
-                    Reduce payroll overhead, increase transparency, and attract top talent 
+                    Reduce payroll overhead, increase transparency, and attract top talent
                     with modern payment options.
                   </div>
                 </div>
@@ -221,7 +275,7 @@ export default function Home() {
                 <div>
                   <div className="font-semibold">For Employees</div>
                   <div className="text-sm text-muted-foreground">
-                    Access earnings instantly, better cash flow management, and complete 
+                    Access earnings instantly, better cash flow management, and complete
                     transparency of payment streams.
                   </div>
                 </div>
@@ -231,7 +285,7 @@ export default function Home() {
                 <div>
                   <div className="font-semibold">For Finance Teams</div>
                   <div className="text-sm text-muted-foreground">
-                    Automated streaming with multisig security. Real-time visibility and 
+                    Automated streaming with multisig security. Real-time visibility and
                     audit trails for compliance.
                   </div>
                 </div>
@@ -279,7 +333,7 @@ export default function Home() {
           <CardContent className="p-12 text-center">
             <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Payroll?</h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join the future of real-time payroll streaming. Set up your workspace 
+              Join the future of real-time payroll streaming. Set up your workspace
               in minutes and start streaming today.
             </p>
             <Link href="/register">
@@ -300,8 +354,11 @@ export default function Home() {
               © 2025 SafeStream. Powered by PayPal USD & Superfluid.
             </div>
             <div className="flex gap-6 text-sm">
-              <Link href="/dashboard" className="hover:text-[#0070BA] transition-colors">
-                Dashboard
+              <Link href="/workspace/single" className="hover:text-[#0070BA] transition-colors">
+                Single Wallet
+              </Link>
+              <Link href="/workspace/multisig" className="hover:text-[#0070BA] transition-colors">
+                Safe Multisig
               </Link>
               <Link href="/register" className="hover:text-[#0070BA] transition-colors">
                 Register
@@ -310,6 +367,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
     </div>
   )
 }

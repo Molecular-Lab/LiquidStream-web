@@ -3,14 +3,16 @@
 import { useState } from "react"
 import { Address, formatEther } from "viem"
 import { useAccount } from "wagmi"
-import { ArrowRightIcon, StopCircleIcon, Edit2Icon } from "lucide-react"
+import { ArrowRightIcon, StopCircleIcon, Edit2Icon, ShieldIcon, AlertTriangleIcon } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useStreamInfo, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useEmployeeStore } from "@/store/employees"
+import { useSafeConfig } from "@/store/safe"
 import { cn } from "@/lib/utils"
 
 interface StreamRowProps {
@@ -23,12 +25,16 @@ interface StreamRowProps {
 
 function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onStop, onUpdate }: StreamRowProps) {
   const { address } = useAccount()
-  const { streamInfo, loading } = useStreamInfo(token, address, receiverAddress)
+  const { safeConfig } = useSafeConfig()
+  const { data: streamInfo, isLoading: loading } = useStreamInfo(token, address, receiverAddress)
+
+  // Use Safe address if configured, otherwise use connected wallet address
+  const senderAddress = safeConfig?.address || address
 
   if (loading) {
     return (
       <TableRow>
-        <TableCell colSpan={5} className="text-center text-muted-foreground">
+        <TableCell colSpan={6} className="text-center text-muted-foreground">
           Loading stream info...
         </TableCell>
       </TableRow>
@@ -52,6 +58,21 @@ function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onSt
           </div>
         </div>
       </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {safeConfig?.address ? (
+            <Badge variant="secondary" className="text-xs">
+              <ShieldIcon className="h-3 w-3 mr-1" />
+              Safe Multisig
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs">
+              <AlertTriangleIcon className="h-3 w-3 mr-1" />
+              Direct Wallet
+            </Badge>
+          )}
+        </div>
+      </TableCell>
       <TableCell className="text-right tabular-nums">
         <div className="text-green-600 dark:text-green-400">
           {flowRates.perMonth}
@@ -70,13 +91,13 @@ function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onSt
           {onUpdate && (
             <Button variant="outline" size="sm" onClick={onUpdate}>
               <Edit2Icon className="h-3 w-3 mr-1" />
-              Edit
+              {safeConfig?.address ? "Propose Edit" : "Edit"}
             </Button>
           )}
           {onStop && (
             <Button variant="destructive" size="sm" onClick={onStop}>
               <StopCircleIcon className="h-3 w-3 mr-1" />
-              Stop
+              {safeConfig?.address ? "Propose Stop" : "Stop"}
             </Button>
           )}
         </div>
@@ -92,13 +113,14 @@ interface StreamsListProps {
   className?: string
 }
 
-export function StreamsList({ 
-  token = PYUSDX_ADDRESS, 
-  onStopStream, 
+export function StreamsList({
+  token = PYUSDX_ADDRESS,
+  onStopStream,
   onUpdateStream,
-  className 
+  className
 }: StreamsListProps) {
   const employees = useEmployeeStore((state) => state.employees)
+  const { safeConfig } = useSafeConfig()
   const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing")
 
   // Filter employees with wallet addresses for outgoing streams
@@ -109,9 +131,20 @@ export function StreamsList({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Streams</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Streams
+              {safeConfig?.address && (
+                <Badge variant="secondary" className="text-xs">
+                  <ShieldIcon className="h-3 w-3 mr-1" />
+                  Safe Protected
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>
-              View and manage active payment streams
+              {safeConfig?.address
+                ? `View and manage streams via Safe multisig (${safeConfig.threshold}/${safeConfig.signers.length} signatures required)`
+                : "View and manage active payment streams"
+              }
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -146,9 +179,10 @@ export function StreamsList({
                 <TableHeader>
                   <TableRow>
                     <TableHead>To / From</TableHead>
-                    <TableHead className="text-right">All Time Flow</TableHead>
-                    <TableHead className="text-right">Flow rate</TableHead>
-                    <TableHead>Start / End Date</TableHead>
+                    <TableHead>Security</TableHead>
+                    <TableHead className="text-right">Monthly Flow</TableHead>
+                    <TableHead className="text-right">Daily Flow</TableHead>
+                    <TableHead>Start Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
