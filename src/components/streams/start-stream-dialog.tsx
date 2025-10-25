@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { currencies, CurrencyKey } from "@/config/currency"
 import { useCreateStream } from "@/hooks/use-streams"
+import { useSingleWalletCreateStream } from "@/hooks/use-single-wallet-streams"
 import { calculateFlowRate } from "@/lib/contract"
 import { Employee } from "@/store/employees"
 import { useSafeConfig } from "@/store/safe"
@@ -36,12 +37,14 @@ interface StartStreamDialogProps {
   employee: Employee | null
   open: boolean
   onClose: () => void
+  forceSingleWallet?: boolean
 }
 
 export function StartStreamDialog({
   employee,
   open,
   onClose,
+  forceSingleWallet = false,
 }: StartStreamDialogProps) {
   const [selectedToken, setSelectedToken] = useState<CurrencyKey>("pyusdx")
   const [frequency, setFrequency] = useState<StreamFrequency>("monthly")
@@ -52,10 +55,17 @@ export function StartStreamDialog({
     tokenSymbol: string
     txHash: string
   } | null>(null)
-  const { mutate: createStream, isPending } = useCreateStream()
+
+  // Use appropriate hook based on Safe configuration or forced mode
+  const { mutate: createStreamMultisig, isPending: isPendingMultisig } = useCreateStream()
+  const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
   const { safeConfig } = useSafeConfig()
 
-  const isSafeConfigured = !!safeConfig?.address
+  const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
+  const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
+
+  // Choose the appropriate create function
+  const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 
   if (!employee) return null
 
@@ -109,10 +119,14 @@ export function StartStreamDialog({
       {
         onSuccess: (txHash) => {
           // Store stream details and show status dialog
+          // Handle both string hash (direct wallet) and Safe Apps SDK response
+          const hashString = typeof txHash === 'string' ? txHash :
+            (typeof txHash === 'object' && 'safeTxHash' in txHash) ? txHash.safeTxHash : ""
+
           setStreamDetails({
             flowRate,
             tokenSymbol: token.symbol,
-            txHash: txHash || "",
+            txHash: hashString,
           })
           onClose() // Close start stream dialog
           setShowStatusDialog(true) // Open status dialog

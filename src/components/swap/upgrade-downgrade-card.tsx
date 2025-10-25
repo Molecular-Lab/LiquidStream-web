@@ -84,7 +84,7 @@ export function UpgradeDowngradeCard() {
 
         // Check if we need approval first
         const needsApproval = !allowance || allowance < amountInUnits
-        
+
         console.log("Safe upgrade process:", {
           amountToUpgrade: amount,
           amountInUnits: amountInUnits.toString(),
