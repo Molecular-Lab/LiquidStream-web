@@ -60,7 +60,7 @@ export const useSafeAppsTokenOperations = () => {
             tokenSymbol,
             spenderAddress,
         }: {
-            operation: 'upgrade' | 'downgrade' | 'approve'
+            operation: 'upgrade' | 'downgrade' | 'approve' | 'upgrade-only'
             tokenAddress: Address
             amount: bigint
             tokenSymbol: string
@@ -136,6 +136,27 @@ export const useSafeAppsTokenOperations = () => {
                         to: tokenAddress,
                         amount: amount.toString(),
                         data: downgradeData
+                    })
+                    break
+
+                case 'upgrade-only':
+                    // For upgrade-only (when approval already exists), just call upgrade function
+                    const upgradeOnlyData = encodeFunctionData({
+                        abi: SUPER_TOKEN_ABI,
+                        functionName: "upgrade",
+                        args: [amount] // amount is already in 18 decimals
+                    })
+
+                    transactions = [{
+                        to: tokenAddress, // PYUSDx contract
+                        value: "0",
+                        data: upgradeOnlyData
+                    }]
+                    description = `Upgrade to ${tokenSymbol}x SuperToken (pre-approved)`
+                    console.log("Creating upgrade-only transaction:", {
+                        to: tokenAddress,
+                        amount: amount.toString() + " (18 decimals)",
+                        data: upgradeOnlyData
                     })
                     break
 

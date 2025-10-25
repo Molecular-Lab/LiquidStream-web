@@ -83,7 +83,16 @@ export function UpgradeDowngradeCard() {
         }
 
         // Check if we need approval first
-        if (!allowance || allowance < amountInUnits) {
+        const needsApproval = !allowance || allowance < amountInUnits
+        
+        console.log("Safe upgrade process:", {
+          amountToUpgrade: amount,
+          amountInUnits: amountInUnits.toString(),
+          currentAllowance: allowance?.toString() || "0",
+          needsApproval
+        })
+
+        if (needsApproval) {
           // Create approval transaction using Safe Apps SDK
           console.log("Creating approval transaction via Safe Apps SDK...")
           createSafeAppsTransaction({
@@ -94,33 +103,27 @@ export function UpgradeDowngradeCard() {
             spenderAddress: PYUSDX_ADDRESS,
           })
 
-          // Note: We're not waiting for approval completion in Safe workflow
-          // Users need to approve first, then come back to upgrade
-          toast.success("Approval transaction created", {
+          toast.info("Approval transaction created in Safe", {
             description: `Approve the transaction in Safe, then return to upgrade.`,
           })
           return
         }
 
-        // Create upgrade transaction using Safe Apps SDK
-        // Note: PYUSD has 6 decimals, PYUSDx has 18 decimals
-        // We need to approve PYUSD (6 decimals) and then upgrade to PYUSDx (18 decimals)
-
+        // Approval already exists, create upgrade-only transaction
         console.log("Creating Safe upgrade transaction via Safe Apps SDK:", {
-          operation: "upgrade",
+          operation: "upgrade-only",
           tokenAddress: PYUSDX_ADDRESS,
-          pyusdAmount: amountInUnits.toString(), // 6 decimals for approval
-          pyusdxAmount: (amountInUnits * BigInt(10 ** 12)).toString(), // 18 decimals for upgrade
+          amountInUnits: amountInUnits.toString(),
+          upgradeAmount: (amountInUnits * BigInt(10 ** 12)).toString(),
           tokenSymbol: "PYUSD",
           originalAmount: amount
         })
 
         createSafeAppsTransaction({
-          operation: "upgrade",
+          operation: "upgrade-only",
           tokenAddress: PYUSDX_ADDRESS,
           amount: amountInUnits * BigInt(10 ** 12), // 18 decimals for PYUSDx upgrade
           tokenSymbol: "PYUSD",
-          spenderAddress: PYUSDX_ADDRESS, // For approval
         })
 
       } else {
