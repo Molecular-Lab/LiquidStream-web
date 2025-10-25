@@ -527,24 +527,24 @@ export default function SetupSafePage() {
                       <div className="grid grid-cols-3 gap-2 text-center text-xs">
                         <div
                           className={`p-2 rounded ${threshold === 1
-                              ? "bg-orange-100 text-orange-700 border border-orange-300"
-                              : "bg-muted text-muted-foreground"
+                            ? "bg-orange-100 text-orange-700 border border-orange-300"
+                            : "bg-muted text-muted-foreground"
                             }`}
                         >
                           Low Security
                         </div>
                         <div
                           className={`p-2 rounded ${threshold > 1 && threshold < signers.length
-                              ? "bg-green-100 text-green-700 border border-green-300"
-                              : "bg-muted text-muted-foreground"
+                            ? "bg-green-100 text-green-700 border border-green-300"
+                            : "bg-muted text-muted-foreground"
                             }`}
                         >
                           Recommended
                         </div>
                         <div
                           className={`p-2 rounded ${threshold === signers.length
-                              ? "bg-blue-100 text-blue-700 border border-blue-300"
-                              : "bg-muted text-muted-foreground"
+                            ? "bg-blue-100 text-blue-700 border border-blue-300"
+                            : "bg-muted text-muted-foreground"
                             }`}
                         >
                           Maximum Security
