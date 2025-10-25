@@ -37,12 +37,14 @@ interface StartStreamDialogProps {
   employee: Employee | null
   open: boolean
   onClose: () => void
+  forceSingleWallet?: boolean
 }
 
 export function StartStreamDialog({
   employee,
   open,
   onClose,
+  forceSingleWallet = false,
 }: StartStreamDialogProps) {
   const [selectedToken, setSelectedToken] = useState<CurrencyKey>("pyusdx")
   const [frequency, setFrequency] = useState<StreamFrequency>("monthly")
@@ -54,14 +56,14 @@ export function StartStreamDialog({
     txHash: string
   } | null>(null)
 
-  // Use appropriate hook based on Safe configuration
+  // Use appropriate hook based on Safe configuration or forced mode
   const { mutate: createStreamMultisig, isPending: isPendingMultisig } = useCreateStream()
   const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
   const { safeConfig } = useSafeConfig()
 
-  const isSafeConfigured = !!safeConfig?.address
+  const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
   const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
-
+  
   // Choose the appropriate create function
   const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 
