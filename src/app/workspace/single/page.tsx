@@ -12,10 +12,12 @@ import { EmployeeList } from "@/components/employees/employee-list"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
 import { StreamsList } from "@/components/streams/streams-list"
 import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
+import { SingleWalletUpgradeDowngradeCard } from "@/components/swap/single-wallet-upgrade-downgrade-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useDeleteStream } from "@/hooks/use-streams"
+import { useSingleWalletDeleteStream } from "@/hooks/use-single-wallet-streams"
 import { Employee } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
 
@@ -24,7 +26,7 @@ export default function SingleWalletWorkspace() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
     const [streamDialogOpen, setStreamDialogOpen] = useState(false)
     const streams = useStreamStore((state) => state.streams)
-    const { mutate: deleteStream } = useDeleteStream()
+    const { mutate: deleteStream } = useSingleWalletDeleteStream()
 
     const handleStartStream = (employee: Employee) => {
         setSelectedEmployee(employee)
@@ -147,7 +149,7 @@ export default function SingleWalletWorkspace() {
                 {/* Token Operations */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
-                    <UpgradeDowngradeCard />
+                    <SingleWalletUpgradeDowngradeCard />
                 </div>
 
                 {/* Stream Management */}

@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { currencies, CurrencyKey } from "@/config/currency"
 import { useCreateStream } from "@/hooks/use-streams"
+import { useSingleWalletCreateStream } from "@/hooks/use-single-wallet-streams"
 import { calculateFlowRate } from "@/lib/contract"
 import { Employee } from "@/store/employees"
 import { useSafeConfig } from "@/store/safe"
@@ -52,10 +53,17 @@ export function StartStreamDialog({
     tokenSymbol: string
     txHash: string
   } | null>(null)
-  const { mutate: createStream, isPending } = useCreateStream()
+  
+  // Use appropriate hook based on Safe configuration
+  const { mutate: createStreamMultisig, isPending: isPendingMultisig } = useCreateStream()
+  const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
   const { safeConfig } = useSafeConfig()
 
   const isSafeConfigured = !!safeConfig?.address
+  const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
+  
+  // Choose the appropriate create function
+  const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 
   if (!employee) return null
 
