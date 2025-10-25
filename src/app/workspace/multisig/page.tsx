@@ -1,43 +1,76 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { Shield, Bell, ArrowLeft, Users, Lock, FileText, RefreshCw, Wallet } from "lucide-react"
+import { Shield, Bell, ArrowLeft, Wallet } from "lucide-react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 
-import { SuperfluidDashboard } from "@/components/dashboard/superfluid-dashboard"
+import { BalanceCards } from "@/components/dashboard/balance-cards"
+import { StreamingStats } from "@/components/dashboard/streaming-stats"
+import { ActiveStreamsTable } from "@/components/dashboard/active-streams-table"
+import { WalletModeBanner } from "@/components/dashboard/wallet-mode-banner"
+import { WorkspaceTabs, TabType } from "@/components/dashboard/workspace-tabs"
+import { EmployeesTab } from "@/components/dashboard/employees-tab"
 import { SafeTransactionStatus } from "@/components/dashboard/safe-transaction-status"
 import { PendingSignaturesAlert } from "@/components/dashboard/pending-signatures-alert"
-import { SafeAppTester } from "@/components/debug/safe-app-tester"
-import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
-import { EmployeeList } from "@/components/employees/employee-list"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
-import { StreamsList } from "@/components/streams/streams-list"
 import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 import { SingleWalletUpgradeDowngradeCard } from "@/components/swap/single-wallet-upgrade-downgrade-card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useDeleteStream } from "@/hooks/use-streams"
+import { useSingleWalletDeleteStream } from "@/hooks/use-single-wallet-streams"
 import { usePendingTransactions } from "@/hooks/use-safe-operations"
 import { Employee } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
+import { useWalletMode } from "@/store/wallet-mode"
+import { ExchangeTab } from "@/components/dashboard/exchange-tab"
 
 export default function MultisigWorkspace() {
     const { address } = useAccount()
+    const [activeTab, setActiveTab] = useState<TabType>("dashboard")
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
     const [streamDialogOpen, setStreamDialogOpen] = useState(false)
-    const [walletMode, setWalletMode] = useState<'safe' | 'direct'>('safe')
-    const streams = useStreamStore((state) => state.streams)
-    const { mutate: deleteStream } = useDeleteStream()
-    const { safeConfig } = useSafeConfig()
+
+    // Wallet mode management - this page is always in Safe Multisig mode
+    const { mode: walletMode, setMode: setWalletMode } = useWalletMode()
+    const { safeConfig } = useSafe()
     const { data: pendingTransactions = [] } = usePendingTransactions()
+
+    // Stream management
+    const streams = useStreamStore((state) => state.streams)
+    const { mutate: deleteStreamSafe } = useDeleteStream()
+    const { mutate: deleteStreamSingle } = useSingleWalletDeleteStream()
+
+    // Always initialize to 'safe' mode on multisig page
+    useEffect(() => {
+        setWalletMode('safe')
+    }, [setWalletMode])
 
     const safeAddress = safeConfig?.address
     const pendingSignaturesCount = pendingTransactions.filter(tx => tx.status === 'pending' || tx.status === 'ready').length
     const isSafeConfigured = !!safeConfig?.address
+    const isInSafeMode = walletMode === 'safe'
+
+    // Calculate total flow rate for balance animation
+    const [isHydrated, setIsHydrated] = useState(false)
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
+
+    const activeStreams = useMemo(() =>
+        isHydrated ? streams.filter((stream) => stream.status === "active") : []
+    , [streams, isHydrated])
+
+    const totalFlowRate = useMemo(() =>
+        activeStreams.reduce(
+            (total, stream) => total + BigInt(stream.flowRate),
+            BigInt(0)
+        )
+    , [activeStreams])
 
     const handleStartStream = (employee: Employee) => {
         setSelectedEmployee(employee)
@@ -51,64 +84,66 @@ export default function MultisigWorkspace() {
 
         if (stream) {
             const employee = streams.find(s => s.employeeId === employeeId)
-            deleteStream({
-                token: stream.token,
-                receiver: stream.employeeAddress,
-                streamId: stream.id,
-                employeeName: employee?.employeeName,
-                tokenSymbol: stream.tokenSymbol,
-            })
+
+            // Use appropriate delete function based on wallet mode
+            if (isInSafeMode) {
+                deleteStreamSafe({
+                    token: stream.token,
+                    receiver: stream.employeeAddress,
+                    streamId: stream.id,
+                    employeeName: employee?.employeeName,
+                    tokenSymbol: stream.tokenSymbol,
+                })
+            } else {
+                deleteStreamSingle({
+                    token: stream.token,
+                    receiver: stream.employeeAddress,
+                    streamId: stream.id,
+                    employeeName: employee?.employeeName,
+                    tokenSymbol: stream.tokenSymbol,
+                })
+            }
         }
     }
 
+    const handleToggleWalletMode = () => {
+        setWalletMode(walletMode === 'safe' ? 'single' : 'safe')
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
             {/* Header */}
-            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+            <div className="border-b bg-white sticky top-0 z-50 shadow-sm">
                 <div className="container mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-6">
                             <Link href="/workspace">
-                                <Button variant="ghost" size="sm">
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Back to Workspace
+                                <Button variant="ghost" size="sm" className="gap-2">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back
                                 </Button>
                             </Link>
 
-                            <div className="text-2xl font-bold bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
+                            <div className={`text-2xl font-bold ${isInSafeMode ? 'text-green-600' : 'text-[#0070BA]'}`}>
                                 SafeStream
                             </div>
 
-                            <nav className="hidden md:flex items-center gap-6">
-                                <Link
-                                    href="/workspace/single"
-                                    className="text-sm font-medium text-muted-foreground hover:text-[#0070BA] transition-colors"
-                                >
-                                    Single Wallet
-                                </Link>
-                                <Link
-                                    href="/workspace/multisig"
-                                    className="text-sm font-medium text-foreground hover:text-[#0070BA] transition-colors"
-                                >
-                                    Multisig
-                                </Link>
-                                <Link
-                                    href="/workspace/signatures"
-                                    className="text-sm font-medium text-muted-foreground hover:text-[#0070BA] transition-colors relative"
-                                >
-                                    Signatures
-                                    {pendingSignaturesCount > 0 && (
-                                        <span className="absolute -top-1 -right-3 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                                            {pendingSignaturesCount}
-                                        </span>
-                                    )}
-                                </Link>
-                            </nav>
-                        </div>
+                            <Badge className={isInSafeMode ? "bg-green-100 text-green-700 border-green-200 px-3 py-1" : "bg-blue-100 text-blue-700 border-blue-200 px-3 py-1"}>
+                                {isInSafeMode ? (
+                                    <>
+                                        <Shield className="mr-1.5 h-3.5 w-3.5" />
+                                        Safe Multisig
+                                    </>
+                                ) : (
+                                    <>
+                                        <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                                        Direct Wallet
+                                    </>
+                                )}
+                            </Badge>
 
-                        <div className="flex items-center gap-4">
                             {/* Wallet Mode Switcher */}
-                            {isSafeConfigured ? (
+                            {isSafeConfigured && (
                                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border rounded-lg">
                                     <div className="flex items-center bg-background rounded-md p-1">
                                         <Button
@@ -121,9 +156,9 @@ export default function MultisigWorkspace() {
                                             Safe
                                         </Button>
                                         <Button
-                                            variant={walletMode === 'direct' ? 'default' : 'ghost'}
+                                            variant={walletMode === 'single' ? 'default' : 'ghost'}
                                             size="sm"
-                                            onClick={() => setWalletMode('direct')}
+                                            onClick={() => setWalletMode('single')}
                                             className="h-8 px-3 text-xs"
                                         >
                                             <Wallet className="h-3 w-3 mr-1" />
@@ -142,27 +177,23 @@ export default function MultisigWorkspace() {
                                         </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg">
-                                    <Shield className="h-4 w-4 text-orange-600" />
-                                    <div className="text-xs">
-                                        <div className="text-orange-600 font-medium">Setup Required</div>
-                                        <div className="text-orange-600/70">Configure Safe</div>
-                                    </div>
-                                </div>
                             )}
+                        </div>
 
+                        <div className="flex items-center gap-4">
                             {/* Notifications */}
-                            <Link href="/workspace/signatures">
-                                <Button variant="outline" size="icon" className="relative">
-                                    <Bell className="h-4 w-4" />
-                                    {pendingSignaturesCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                                            {pendingSignaturesCount}
-                                        </span>
-                                    )}
-                                </Button>
-                            </Link>
+                            {isInSafeMode && (
+                                <Link href="/workspace/signatures">
+                                    <Button variant="outline" size="icon" className="relative">
+                                        <Bell className="h-4 w-4" />
+                                        {pendingSignaturesCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                                                {pendingSignaturesCount}
+                                            </span>
+                                        )}
+                                    </Button>
+                                </Link>
+                            )}
 
                             <ConnectButton />
                         </div>
@@ -170,201 +201,109 @@ export default function MultisigWorkspace() {
                 </div>
             </div>
 
-            <main className="container mx-auto px-6 py-8 space-y-8">
-                {/* Wallet Mode Info Banner */}
-                {isSafeConfigured && walletMode === 'direct' && (
-                    <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                                        <Wallet className="h-6 w-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <div className="font-semibold text-lg text-green-800 dark:text-green-200 flex items-center gap-2">
-                                            Direct Wallet Mode
-                                            <Badge variant="outline" className="text-green-700 border-green-300">
-                                                Instant Execution
-                                            </Badge>
-                                        </div>
-                                        <div className="text-sm text-green-700 dark:text-green-300">
-                                            Transactions execute immediately with your connected wallet
-                                        </div>
-                                        <div className="text-xs text-green-600 mt-1 font-mono">
-                                            {address}
-                                        </div>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setWalletMode('safe')}
-                                    className="border-green-300 text-green-700 hover:bg-green-50"
-                                >
-                                    <Shield className="mr-2 h-4 w-4" />
-                                    Switch to Safe
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Safe Configuration Status */}
-                {isSafeConfigured && walletMode === 'safe' ? (
-                    <Card className="border-2 border-[#0070BA]/50 bg-gradient-to-r from-[#0070BA]/10 to-[#009CDE]/10">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-[#0070BA] rounded-full flex items-center justify-center">
-                                        <Shield className="h-6 w-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <div className="font-semibold text-lg flex items-center gap-2">
-                                            Safe Multisig Active
-                                            <Badge variant="secondary" className="text-xs">
-                                                {safeConfig.threshold}/{safeConfig.signers.length} signatures required
-                                            </Badge>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            All payroll operations require multiple signatures for security
-                                        </div>
-                                        <div className="text-xs text-muted-foreground mt-1 font-mono">
-                                            {safeAddress}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <Badge variant="outline" className="text-[#0070BA] border-[#0070BA]/30">
-                                        <Lock className="mr-1 h-3 w-3" />
-                                        Secure
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[#0070BA] border-[#0070BA]/30">
-                                        <Users className="mr-1 h-3 w-3" />
-                                        {safeConfig.signers.length} Signers
-                                    </Badge>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setWalletMode('direct')}
-                                        className="text-xs"
-                                    >
-                                        <RefreshCw className="mr-1 h-3 w-3" />
-                                        Switch to Direct
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                                        <Shield className="h-6 w-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <div className="font-semibold text-lg text-orange-800 dark:text-orange-200">
-                                            Safe Setup Required
-                                        </div>
-                                        <div className="text-sm text-orange-700 dark:text-orange-300">
-                                            Configure your Safe multisig wallet to enable secure payroll operations
-                                        </div>
-                                    </div>
-                                </div>
-                                <Link href="/setup-safe">
-                                    <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                                        <Shield className="mr-2 h-4 w-4" />
-                                        Setup Safe Multisig
-                                    </Button>
-                                </Link>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Pending Signatures Alert */}
-                <PendingSignaturesAlert pendingCount={pendingSignaturesCount} safeAddress={safeAddress} />
-
-                {/* Workspace Info */}
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">
-                        {walletMode === 'safe' ? 'Multisig Dashboard' : 'Direct Wallet Dashboard'}
+            <main className="container mx-auto px-6 py-8 max-w-7xl">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold mb-2 text-gray-900">
+                        {isInSafeMode ? 'Multisig Dashboard' : 'Direct Wallet Dashboard'}
                     </h1>
-                    <p className="text-muted-foreground">
-                        {walletMode === 'safe'
-                            ? "Manage your team's payroll streams with enterprise-grade multisig security"
-                            : "Manage payroll streams with direct wallet execution - fast and simple"
+                    <p className="text-lg text-gray-600">
+                        {isInSafeMode
+                            ? "Manage payroll streams with enterprise-grade multisig security - requires multiple signatures"
+                            : "Manage payroll streams with instant execution - perfect for fast operations"
                         }
                     </p>
                 </div>
 
-                {/* Safe Transaction Status */}
-                {isSafeConfigured && walletMode === 'safe' && pendingSignaturesCount > 0 && (
-                    <div>
-                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Transaction Status
-                        </h2>
-                        <SafeTransactionStatus />
+                {/* Pending Signatures Alert - only show in Safe mode */}
+                {isInSafeMode && pendingSignaturesCount > 0 && (
+                    <div className="mb-6">
+                        <PendingSignaturesAlert pendingCount={pendingSignaturesCount} safeAddress={safeAddress} />
                     </div>
                 )}
 
-                {/* Safe Apps SDK Tester */}
-                {walletMode === 'safe' && <SafeAppTester />}
+                {/* Tabs Navigation */}
+                <div className="mb-8">
+                    <WorkspaceTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
 
-                {/* Superfluid Dashboard */}
-                <SuperfluidDashboard />                {/* Token Operations */}
-                <div>
-                    <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
-                    {walletMode === 'safe' ? (
+                {/* Dashboard Tab */}
+                {activeTab === "dashboard" && (
+                    <div className="space-y-6">
+                        {/* Wallet Mode Banner */}
+                        <WalletModeBanner />
+
+                        {/* Balance Cards */}
+                        <BalanceCards totalFlowRate={totalFlowRate} />
+
+                        {/* Current Streaming Stats */}
+                        <StreamingStats />
+
+                        {/* Active Streams Table */}
+                        <ActiveStreamsTable />
+
+                        {/* Safe Transaction Status - only show in Safe mode with pending transactions */}
+                        {isInSafeMode && pendingSignaturesCount > 0 && (
+                            <SafeTransactionStatus />
+                        )}
+                    </div>
+                )}
+
+                {/* Exchange Tab */}
+                {activeTab === "exchange" && (
+                    <div className="space-y-6">
+                        {/* Token Operations */}
                         <UpgradeDowngradeCard />
-                    ) : (
-                        <SingleWalletUpgradeDowngradeCard />
-                    )}
-                </div>
 
-                {/* Stream Management */}
-                <div>
-                    <h2 className="text-xl font-semibold mb-4">Payment Streams</h2>
-                    <StreamsList />
-                </div>
+                        {/* About Streamable PYUSD Info */}
+                        <Card className={`border-2 ${isInSafeMode ? 'border-green-200 bg-gradient-to-r from-green-50 to-white' : 'border-blue-200 bg-gradient-to-r from-blue-50 to-white'}`}>
+                            <CardContent className="p-6">
+                                <h3 className="font-semibold text-lg text-gray-900 mb-4">About Streamable PYUSD</h3>
+                                <div className="space-y-3 text-gray-600">
+                                    <p>
+                                        <strong className="text-gray-900">Streamable PYUSD</strong> (PYUSDx SuperToken) is enabled for real-time payment streaming via Superfluid Protocol.
+                                    </p>
+                                    <ul className="list-disc list-inside space-y-2 ml-2">
+                                        <li><strong>Upgrade:</strong> Convert PYUSD → Streamable PYUSD to enable streaming</li>
+                                        <li><strong>Downgrade:</strong> Convert Streamable PYUSD → PYUSD to return to base token</li>
+                                        <li><strong>1:1 Ratio:</strong> Always maintains equal value during conversion</li>
+                                        {isInSafeMode ? (
+                                            <li><strong>Safe Multisig:</strong> Transactions require {safeConfig?.threshold}/{safeConfig?.signers.length} signatures before execution</li>
+                                        ) : (
+                                            <li><strong>Direct Wallet:</strong> Transactions execute immediately without approval delays</li>
+                                        )}
+                                    </ul>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
-                {/* Employee Management */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Team Members</CardTitle>
-                                <CardDescription>
-                                    {!isSafeConfigured
-                                        ? "Configure Safe multisig to manage employee payment streams securely"
-                                        : walletMode === 'safe'
-                                            ? `Add employees and manage payment streams (requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures)`
-                                            : "Add employees and manage payment streams with instant execution"
-                                    }
-                                </CardDescription>
-                            </div>
-                            <AddEmployeeDialog />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <EmployeeList
-                            onStartStream={handleStartStream}
-                            onStopStream={handleStopStream}
-                        />
-                    </CardContent>
-                </Card>
+                {/* Employees Tab */}
+                {activeTab === "employees" && (
+                    <EmployeesTab
+                        onStartStream={handleStartStream}
+                        onStopStream={handleStopStream}
+                    />
+                )}
 
                 {/* Start Stream Dialog */}
-                <StartStreamDialog
-                    employee={selectedEmployee}
-                    open={streamDialogOpen}
-                    onClose={() => {
-                        setStreamDialogOpen(false)
-                        setSelectedEmployee(null)
-                    }}
-                    forceSingleWallet={walletMode === 'direct'}
-                />
+                {streamDialogOpen && (
+                    <StartStreamDialog
+                        key="start-stream"
+                        employee={selectedEmployee}
+                        open={streamDialogOpen}
+                        onClose={() => {
+                            setStreamDialogOpen(false)
+                            setSelectedEmployee(null)
+                        }}
+                        onStreamCreated={() => {
+                            setStreamDialogOpen(false)
+                            setSelectedEmployee(null)
+                        }}
+                        forceSingleWallet={!isInSafeMode}
+                    />
+                )}
             </main>
         </div>
     )

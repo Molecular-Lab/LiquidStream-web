@@ -58,6 +58,11 @@ export function SingleWalletUpgradeDowngradeCard() {
 
     const symbol = operation === 'upgrade' ? 'PYUSD' : 'PYUSDx'
     const targetSymbol = operation === 'upgrade' ? 'PYUSDx' : 'PYUSD'
+    
+    // Format balance for display
+    const formattedBalance = typeof maxBalance === 'bigint' 
+        ? Number(formatUnits(maxBalance, operation === 'upgrade' ? 6 : 18)).toFixed(6)
+        : '0.000000'
 
     const handleMaxClick = () => {
         if (maxBalance > 0) {
@@ -133,7 +138,7 @@ export function SingleWalletUpgradeDowngradeCard() {
                         <div className="flex items-center justify-between">
                             <Label htmlFor="amount">Amount ({symbol})</Label>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>Balance: {maxBalance.toFixed(6)} {symbol}</span>
+                                <span>Balance: {formattedBalance} {symbol}</span>
                                 <Button
                                     type="button"
                                     variant="ghost"

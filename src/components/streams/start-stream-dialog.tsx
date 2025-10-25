@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { CoinsIcon, Shield, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { parseUnits } from "viem"
@@ -28,8 +28,7 @@ import { useCreateStream } from "@/hooks/use-streams"
 import { useSingleWalletCreateStream } from "@/hooks/use-single-wallet-streams"
 import { calculateFlowRate } from "@/lib/contract"
 import { Employee } from "@/store/employees"
-import { useSafeConfig } from "@/store/safe"
-import { StreamingStatusDialog } from "./streaming-status-dialog"
+import { useSafe } from "@/store/safe"
 
 type StreamFrequency = "daily" | "weekly" | "monthly" | "annual"
 
@@ -38,6 +37,7 @@ interface StartStreamDialogProps {
   open: boolean
   onClose: () => void
   forceSingleWallet?: boolean
+  onStreamCreated?: (data: { flowRate: bigint; tokenSymbol: string; txHash: string }) => void
 }
 
 export function StartStreamDialog({
@@ -45,21 +45,16 @@ export function StartStreamDialog({
   open,
   onClose,
   forceSingleWallet = false,
+  onStreamCreated,
 }: StartStreamDialogProps) {
   const [selectedToken, setSelectedToken] = useState<CurrencyKey>("pyusdx")
   const [frequency, setFrequency] = useState<StreamFrequency>("monthly")
   const [customAmount, setCustomAmount] = useState<string>("")
-  const [showStatusDialog, setShowStatusDialog] = useState(false)
-  const [streamDetails, setStreamDetails] = useState<{
-    flowRate: bigint
-    tokenSymbol: string
-    txHash: string
-  } | null>(null)
 
   // Use appropriate hook based on Safe configuration or forced mode
   const { mutate: createStreamMultisig, isPending: isPendingMultisig } = useCreateStream()
   const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
 
   // Determine wallet mode - force single wallet overrides Safe configuration
   const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
@@ -68,10 +63,11 @@ export function StartStreamDialog({
   // Choose the appropriate create function
   const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 
-  if (!employee) return null
-
-  // Calculate flow rate based on frequency
-  const calculateFlowRateByFrequency = (): bigint => {
+  // Calculate flow rate based on frequency - memoize to prevent recalculation
+  // Use optional chaining to handle null employee safely
+  const calculateFlowRateByFrequency = useCallback((): bigint => {
+    if (!employee) return BigInt(0)
+    
     let annualAmount: number
 
     if (frequency === "annual") {
@@ -96,56 +92,22 @@ export function StartStreamDialog({
     }
 
     return calculateFlowRate(annualAmount)
-  }
+  }, [frequency, customAmount, employee])
 
-  const handleStartStream = () => {
-    const token = currencies[selectedToken]
+  // Memoize the flow rate calculation
+  const flowRate = useMemo(() => calculateFlowRateByFrequency(), [calculateFlowRateByFrequency])
 
-    if (!customAmount || Number(customAmount) <= 0) {
-      toast.error("Please enter a valid amount")
-      return
-    }
-
-    const flowRate = calculateFlowRateByFrequency()
-
-    createStream(
-      {
-        token: token.address,
-        receiver: employee.walletAddress,
-        flowRate,
-        employeeId: employee.id,
-        employeeName: employee.name,
-        tokenSymbol: token.symbol,
-      },
-      {
-        onSuccess: (txHash) => {
-          // Store stream details and show status dialog
-          // Handle both string hash (direct wallet) and Safe Apps SDK response
-          const hashString = typeof txHash === 'string' ? txHash :
-            (typeof txHash === 'object' && 'safeTxHash' in txHash) ? txHash.safeTxHash : ""
-
-          setStreamDetails({
-            flowRate,
-            tokenSymbol: token.symbol,
-            txHash: hashString,
-          })
-          onClose() // Close start stream dialog
-          setShowStatusDialog(true) // Open status dialog
-        },
+  // Calculate display amounts - memoize to prevent recalculation
+  const amounts = useMemo(() => {
+    if (!employee) {
+      return {
+        annual: 0,
+        monthly: 0,
+        weekly: 0,
+        daily: 0,
       }
-    )
-  }
-
-  const handleCloseStatusDialog = () => {
-    setShowStatusDialog(false)
-    setStreamDetails(null)
-    setCustomAmount("")
-  }
-
-  const flowRate = calculateFlowRateByFrequency()
-
-  // Calculate display amounts
-  const getDisplayAmounts = () => {
+    }
+    
     if (frequency === "annual") {
       const annual = Number(employee.salary)
       return {
@@ -177,14 +139,73 @@ export function StartStreamDialog({
         daily: annual / 365.25,
       }
     }
-  }
+  }, [frequency, customAmount, employee])
 
-  const amounts = getDisplayAmounts()
+  const handleStartStream = useCallback(() => {
+    if (!employee) return
+    
+    const token = currencies[selectedToken]
+
+    if (!customAmount || Number(customAmount) <= 0) {
+      toast.error("Please enter a valid amount")
+      return
+    }
+
+    createStream(
+      {
+        token: token.address,
+        receiver: employee.walletAddress,
+        flowRate,
+        employeeId: employee.id,
+        employeeName: employee.name,
+        tokenSymbol: token.symbol,
+      },
+      {
+        onSuccess: (txHash) => {
+          // Handle both string hash (direct wallet) and Safe Apps SDK response
+          const hashString = typeof txHash === 'string' ? txHash :
+            (typeof txHash === 'object' && 'safeTxHash' in txHash) ? txHash.safeTxHash : ""
+
+          // Reset form
+          setCustomAmount("")
+          
+          // Call the callback to notify parent
+          if (onStreamCreated) {
+            onStreamCreated({
+              flowRate,
+              tokenSymbol: token.symbol,
+              txHash: hashString,
+            })
+          }
+          
+          // Force close dialog immediately
+          onClose()
+        },
+        onError: (error) => {
+          // Error toast already shown by mutation
+          console.error("Stream creation error:", error)
+        }
+      }
+    )
+  }, [selectedToken, customAmount, flowRate, employee, createStream, onStreamCreated, onClose])
+
+  // Early return after all hooks are called to comply with Rules of Hooks
+  if (!employee) return null
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="min-w-[700px]">
+          {/* Loading Overlay - covers the entire dialog during transaction */}
+          {isPending && (
+            <div className="absolute inset-0 bg-background/95 backdrop-blur-sm z-[100] flex items-center justify-center rounded-lg">
+              <div className="text-center space-y-3">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm font-medium">Processing transaction...</p>
+                <p className="text-xs text-muted-foreground">Please confirm in your wallet</p>
+              </div>
+            </div>
+          )}
+          
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               {isSafeConfigured ? "Propose Payment Stream" : "Start Payment Stream"}
@@ -254,6 +275,7 @@ export function StartStreamDialog({
                     {currencies["pyusdx"] && (
                       <SelectItem key={currencies["pyusdx"].key} value={currencies["pyusdx"].key}>
                         <div className="flex items-center gap-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={"/paypal-usd-pyusd-logo.png"}
                             className="h-5 w-5 rounded-full"
@@ -336,18 +358,5 @@ export function StartStreamDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Streaming Status Dialog */}
-      {streamDetails && (
-        <StreamingStatusDialog
-          employee={employee}
-          flowRate={streamDetails.flowRate}
-          tokenSymbol={streamDetails.tokenSymbol}
-          transactionHash={streamDetails.txHash}
-          open={showStatusDialog}
-          onClose={handleCloseStatusDialog}
-        />
-      )}
-    </>
   )
 }

@@ -7,9 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { State, WagmiProvider } from "wagmi"
 
 import { config } from "@/config/wallet"
-import { useSafeConfig } from "@/store/safe"
-import { useEffect, useState } from "react"
-import { SafeAppsProvider } from "@/components/safe-apps-provider"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,9 +35,7 @@ export function Providers({
             overlayBlur: "large",
           })}
         >
-          <SafeAppsProvider>
-            {children}
-          </SafeAppsProvider>
+          {children}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

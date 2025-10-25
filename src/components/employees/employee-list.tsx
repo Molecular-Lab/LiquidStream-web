@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import { Employee, useEmployeeStore } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 
 interface EmployeeListProps {
   onStartStream: (employee: Employee) => void
@@ -34,7 +34,7 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
   const employees = useEmployeeStore((state) => state.employees)
   const removeEmployee = useEmployeeStore((state) => state.removeEmployee)
   const streams = useStreamStore((state) => state.streams)
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
 
   const isSafeConfigured = !!safeConfig?.address
 

@@ -16,7 +16,7 @@ export const useTokenBalances = () => {
   return useQuery({
     queryKey: ["token-balances", address],
     queryFn: async () => {
-      if (!address) return { pyusdx: 0, pyusd: 0 }
+      if (!address) return { pyusdx: BigInt(0), pyusd: BigInt(0) }
 
       // Use separate readContract calls to avoid deep type instantiation
       const [pyusdxBalance, pyusdBalance] = await Promise.all([
@@ -35,8 +35,8 @@ export const useTokenBalances = () => {
       ])
 
       return {
-        pyusdx: pyusdxBalance ? Number(pyusdxBalance) / 1e18 : 0,
-        pyusd: pyusdBalance ? Number(pyusdBalance) / 1e18 : 0,
+        pyusdx: pyusdxBalance ? BigInt(pyusdxBalance as bigint) : BigInt(0), // 18 decimals
+        pyusd: pyusdBalance ? BigInt(pyusdBalance as bigint) : BigInt(0),     // 6 decimals
       }
     },
     enabled: !!address,

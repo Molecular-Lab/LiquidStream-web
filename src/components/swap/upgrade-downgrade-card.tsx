@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI } from "@/lib/contract"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 import { useSafeTokenOperations } from "@/hooks/use-safe-operations"
 import { useSafeAppsTokenOperations } from "@/hooks/use-safe-apps-sdk"
 import { parseAbi } from "viem"
@@ -35,7 +35,7 @@ export function UpgradeDowngradeCard() {
 
   const { writeContractAsync } = useWriteContract()
   const publicClient = usePublicClient()
-  const { safeConfig, isSigner } = useSafeConfig()
+  const { safeConfig, isSigner } = useSafe()
   const { mutate: createSafeTokenTransaction, isPending: isSafeOperationPending } = useSafeTokenOperations()
   const { mutate: createSafeAppsTransaction, isPending: isSafeAppsPending } = useSafeAppsTokenOperations()
 
@@ -318,8 +318,8 @@ export function UpgradeDowngradeCard() {
         </CardTitle>
         <CardDescription>
           {isSafeConfigured
-            ? `Create proposals to upgrade PYUSD to PYUSDx (wrap) or downgrade PYUSDx to PYUSD (unwrap) - requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures`
-            : "Upgrade PYUSD to PYUSDx (wrap) or downgrade PYUSDx to PYUSD (unwrap)"
+            ? `Create proposals to upgrade PYUSD to Streamable PYUSD or downgrade back to regular PYUSD - requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures`
+            : "Upgrade PYUSD to Streamable PYUSD or downgrade back to regular PYUSD"
           }
         </CardDescription>
       </CardHeader>
@@ -346,9 +346,14 @@ export function UpgradeDowngradeCard() {
           <Label>From</Label>
           <div className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {isUpgradeMode ? "PYUSD" : "PYUSDx"}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {isUpgradeMode ? "PYUSD" : "Streamable PYUSD"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {isUpgradeMode ? "Base Token" : "PYUSDx SuperToken"}
+                </span>
+              </div>
               <span className="text-sm text-muted-foreground">
                 Balance: {isUpgradeMode ? formattedPyusdBalance : formattedPyusdxBalance}
               </span>
@@ -393,9 +398,14 @@ export function UpgradeDowngradeCard() {
           <Label>To</Label>
           <div className="rounded-lg border p-4 space-y-3 bg-muted/50">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {isUpgradeMode ? "PYUSDx" : "PYUSD"}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {isUpgradeMode ? "Streamable PYUSD" : "PYUSD"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {isUpgradeMode ? "PYUSDx SuperToken" : "Base Token"}
+                </span>
+              </div>
               <span className="text-sm text-muted-foreground">
                 Balance: {isUpgradeMode ? formattedPyusdxBalance : formattedPyusdBalance}
               </span>
@@ -416,7 +426,7 @@ export function UpgradeDowngradeCard() {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Type</span>
-            <span>{isUpgradeMode ? "Upgrade (Wrap)" : "Downgrade (Unwrap)"}</span>
+            <span>{isUpgradeMode ? "Upgrade to Streamable" : "Downgrade to Base"}</span>
           </div>
           {isUpgradeMode && (
             <div className="flex justify-between items-center text-muted-foreground">
@@ -457,7 +467,7 @@ export function UpgradeDowngradeCard() {
           ) : isSafeConfigured ? (
             isUpgradeMode ? "Create Upgrade Transaction" : "Create Downgrade Transaction"
           ) : (
-            isUpgradeMode ? "Upgrade to PYUSDx" : "Downgrade to PYUSD"
+            isUpgradeMode ? "Upgrade to Streamable PYUSD" : "Downgrade to PYUSD"
           )}
         </Button>
 
@@ -472,8 +482,8 @@ export function UpgradeDowngradeCard() {
         {isUpgradeMode && (
           <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
             💡 {isSafeConfigured
-              ? "Upgrading will create a transaction in your Safe queue to wrap PYUSD into PYUSDx SuperToken, enabling real-time streaming capabilities after multisig approval."
-              : "Upgrading wraps your PYUSD into PYUSDx SuperToken, which enables real-time streaming capabilities."
+              ? "Upgrading converts your PYUSD into Streamable PYUSD (PYUSDx SuperToken), enabling real-time streaming capabilities after multisig approval."
+              : "Upgrading converts your PYUSD into Streamable PYUSD (PYUSDx SuperToken), enabling real-time streaming capabilities."
             }
           </div>
         )}

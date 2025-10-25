@@ -13,7 +13,7 @@ import {
   CFAV1_ADDRESS,
 } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 import { useSafeAppsStreamOperations } from "@/hooks/use-safe-apps-sdk"
 
 /**
@@ -24,7 +24,7 @@ export const useCreateStream = () => {
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const addStream = useStreamStore((state) => state.addStream)
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
   const { executeStreamOperation } = useSafeAppsStreamOperations()
 
   return useMutation({
@@ -134,7 +134,7 @@ export const useUpdateStream = () => {
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const updateStream = useStreamStore((state) => state.updateStream)
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
   const { executeStreamOperation } = useSafeAppsStreamOperations()
 
   return useMutation({
@@ -231,7 +231,7 @@ export const useDeleteStream = () => {
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const endStream = useStreamStore((state) => state.endStream)
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
   const { executeStreamOperation } = useSafeAppsStreamOperations()
 
   return useMutation({

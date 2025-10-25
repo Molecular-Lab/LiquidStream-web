@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { useRealtimeBalance, useIncomingStreams, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 import { Separator } from "@/components/ui/separator"
 
 export function SuperfluidDashboard() {
   const { address } = useAccount()
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
 
   // Use Safe address if configured, otherwise use connected wallet
   const activeAddress = (safeConfig?.address || address) as Address | undefined

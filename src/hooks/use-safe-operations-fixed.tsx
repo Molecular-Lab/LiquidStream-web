@@ -4,7 +4,7 @@ import { Address } from "viem"
 import { useAccount, useWalletClient, useChainId } from "wagmi"
 
 import { SafeTransactionBuilder, createSafeTransactionBuilder } from "@/lib/safe-transactions"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 
 /**
  * Hook for Safe token operations (upgrade/downgrade)
@@ -13,7 +13,7 @@ export const useSafeTokenOperations = () => {
     const { data: walletClient } = useWalletClient()
     const { address } = useAccount()
     const chainId = useChainId()
-    const { safeConfig, addPendingTransaction, isSigner } = useSafeConfig()
+    const { safeConfig, addPendingTransaction, isSigner } = useSafe()
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -169,7 +169,7 @@ export const useSafeTokenOperations = () => {
 export const useSafeStreamOperations = () => {
     const { data: walletClient } = useWalletClient()
     const { address } = useAccount()
-    const { safeConfig, addPendingTransaction, isSigner } = useSafeConfig()
+    const { safeConfig, addPendingTransaction, isSigner } = useSafe()
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -286,7 +286,7 @@ export const useSafeStreamOperations = () => {
 export const useSignSafeTransaction = () => {
     const { data: walletClient } = useWalletClient()
     const { address } = useAccount()
-    const { safeConfig, pendingTransactions, signTransaction, isSigner } = useSafeConfig()
+    const { safeConfig, pendingTransactions, signTransaction, isSigner } = useSafe()
 
     return useMutation({
         mutationFn: async ({ transactionId }: { transactionId: string }) => {
@@ -349,7 +349,7 @@ export const useSignSafeTransaction = () => {
 export const useExecuteSafeTransaction = () => {
     const { data: walletClient } = useWalletClient()
     const { address } = useAccount()
-    const { safeConfig, pendingTransactions, executeTransaction, isSigner } = useSafeConfig()
+    const { safeConfig, pendingTransactions, executeTransaction, isSigner } = useSafe()
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -410,7 +410,7 @@ export const useExecuteSafeTransaction = () => {
  */
 export const usePendingTransactions = () => {
     const { address } = useAccount()
-    const { getPendingForSigner } = useSafeConfig()
+    const { getPendingForSigner } = useSafe()
 
     return useQuery({
         queryKey: ["pending-transactions", address],
@@ -429,7 +429,7 @@ export const usePendingTransactions = () => {
 export const useBatchSafeOperations = () => {
     const { data: walletClient } = useWalletClient()
     const { address } = useAccount()
-    const { safeConfig, addPendingTransaction } = useSafeConfig()
+    const { safeConfig, addPendingTransaction } = useSafe()
 
     return useMutation({
         mutationFn: async ({

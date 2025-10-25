@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useStreamInfo, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { useEmployeeStore } from "@/store/employees"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 import { cn } from "@/lib/utils"
 
 interface StreamRowProps {
@@ -25,7 +25,7 @@ interface StreamRowProps {
 
 function StreamRow({ receiverAddress, receiverName, token = PYUSDX_ADDRESS, onStop, onUpdate }: StreamRowProps) {
   const { address } = useAccount()
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
   const { data: streamInfo, isLoading: loading } = useStreamInfo(token, address, receiverAddress)
 
   // Use Safe address if configured, otherwise use connected wallet address
@@ -120,7 +120,7 @@ export function StreamsList({
   className
 }: StreamsListProps) {
   const employees = useEmployeeStore((state) => state.employees)
-  const { safeConfig } = useSafeConfig()
+  const { safeConfig } = useSafe()
   const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing")
 
   // Filter employees with wallet addresses for outgoing streams

@@ -1,32 +1,63 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { Wallet, Settings, ArrowLeft, Zap, DollarSign } from "lucide-react"
+import { Wallet, ArrowLeft } from "lucide-react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 
-import { SuperfluidDashboard } from "@/components/dashboard/superfluid-dashboard"
-import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog"
-import { EmployeeList } from "@/components/employees/employee-list"
+import { BalanceCards } from "@/components/dashboard/balance-cards"
+import { StreamingStats } from "@/components/dashboard/streaming-stats"
+import { ActiveStreamsTable } from "@/components/dashboard/active-streams-table"
+import { WalletModeBanner } from "@/components/dashboard/wallet-mode-banner"
+import { WorkspaceTabs, TabType } from "@/components/dashboard/workspace-tabs"
+import { EmployeesTab } from "@/components/dashboard/employees-tab"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
-import { StreamsList } from "@/components/streams/streams-list"
-import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 import { SingleWalletUpgradeDowngradeCard } from "@/components/swap/single-wallet-upgrade-downgrade-card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useDeleteStream } from "@/hooks/use-streams"
 import { useSingleWalletDeleteStream } from "@/hooks/use-single-wallet-streams"
 import { Employee } from "@/store/employees"
 import { useStreamStore } from "@/store/streams"
+import { useWalletMode } from "@/store/wallet-mode"
+import { ExchangeTab } from "@/components/dashboard/exchange-tab"
+import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 
 export default function SingleWalletWorkspace() {
     const { address } = useAccount()
+    const [activeTab, setActiveTab] = useState<TabType>("dashboard")
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
     const [streamDialogOpen, setStreamDialogOpen] = useState(false)
+
+    // Wallet mode management - force single mode for this page
+    const { setMode: setWalletMode } = useWalletMode()
+
+    // Stream management
     const streams = useStreamStore((state) => state.streams)
     const { mutate: deleteStream } = useSingleWalletDeleteStream()
+
+    // Initialize wallet mode to 'single' for single wallet page
+    useEffect(() => {
+        setWalletMode('single')
+    }, [setWalletMode])
+
+    // Calculate total flow rate for balance animation
+    const [isHydrated, setIsHydrated] = useState(false)
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
+
+    const activeStreams = useMemo(() =>
+        isHydrated ? streams.filter((stream) => stream.status === "active") : []
+    , [streams, isHydrated])
+
+    const totalFlowRate = useMemo(() =>
+        activeStreams.reduce(
+            (total, stream) => total + BigInt(stream.flowRate),
+            BigInt(0)
+        )
+    , [activeStreams])
 
     const handleStartStream = (employee: Employee) => {
         setSelectedEmployee(employee)
@@ -51,143 +82,97 @@ export default function SingleWalletWorkspace() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
             {/* Header */}
-            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+            <div className="border-b bg-white sticky top-0 z-50 shadow-sm">
                 <div className="container mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-6">
                             <Link href="/workspace">
-                                <Button variant="ghost" size="sm">
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Back to Workspace
+                                <Button variant="ghost" size="sm" className="gap-2">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back
                                 </Button>
                             </Link>
 
-                            <div className="text-2xl font-bold bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
+                            <div className="text-2xl font-bold text-[#0070BA]">
                                 SafeStream
                             </div>
-
-                            <nav className="hidden md:flex items-center gap-6">
-                                <Link
-                                    href="/workspace/single"
-                                    className="text-sm font-medium text-foreground hover:text-[#0070BA] transition-colors"
-                                >
-                                    Single Wallet
-                                </Link>
-                                <Link
-                                    href="/workspace/multisig"
-                                    className="text-sm font-medium text-muted-foreground hover:text-[#0070BA] transition-colors"
-                                >
-                                    Multisig
-                                </Link>
-                            </nav>
+                            
+                            <Badge className="bg-blue-100 text-[#0070BA] border-blue-200 px-3 py-1">
+                                <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                                Single Wallet
+                            </Badge>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            {/* Wallet Info */}
-                            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                                <Wallet className="h-4 w-4 text-green-600" />
-                                <div className="text-xs">
-                                    <div className="text-green-600 font-medium">Direct Wallet</div>
-                                    <div className="text-green-600/70">Instant execution</div>
-                                </div>
-                            </div>
-
-                            <ConnectButton />
-                        </div>
+                        <ConnectButton />
                     </div>
                 </div>
             </div>
 
-            <main className="container mx-auto px-6 py-8 space-y-8">
-                {/* Single Wallet Banner */}
-                <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                                    <Zap className="h-6 w-6 text-white" />
-                                </div>
-                                <div>
-                                    <div className="font-semibold text-lg text-green-800 dark:text-green-200">
-                                        Single Wallet Mode
-                                    </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">
-                                        Direct wallet operations - transactions execute immediately
-                                    </div>
-                                    <div className="text-xs text-green-600 mt-1">
-                                        Perfect for small teams or individual use
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Badge variant="outline" className="text-green-700 border-green-300">
-                                    <Zap className="mr-1 h-3 w-3" />
-                                    Instant Execution
-                                </Badge>
-                                <Badge variant="outline" className="text-green-700 border-green-300">
-                                    <DollarSign className="mr-1 h-3 w-3" />
-                                    Low Gas Fees
-                                </Badge>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Workspace Info */}
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">Single Wallet Dashboard</h1>
-                    <p className="text-muted-foreground">
-                        Manage payroll streams with your connected wallet - fast and simple
+            <main className="container mx-auto px-6 py-8 max-w-7xl">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold mb-2 text-gray-900">Single Wallet Dashboard</h1>
+                    <p className="text-lg text-gray-600">
+                        Manage payroll streams with instant execution - perfect for small teams
                     </p>
                 </div>
 
-                {/* Superfluid Dashboard */}
-                <SuperfluidDashboard />
-
-                {/* Token Operations */}
-                <div>
-                    <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
-                    <SingleWalletUpgradeDowngradeCard />
+                {/* Tabs Navigation */}
+                <div className="mb-8">
+                    <WorkspaceTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
 
-                {/* Stream Management */}
-                <div>
-                    <h2 className="text-xl font-semibold mb-4">Payment Streams</h2>
-                    <StreamsList />
-                </div>
+                {/* Dashboard Tab */}
+                {activeTab === "dashboard" && (
+                    <div className="space-y-6">
+                        {/* Wallet Mode Banner */}
+                        <WalletModeBanner />
 
-                {/* Employee Management */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Team Members</CardTitle>
-                                <CardDescription>
-                                    Add employees and manage their payment streams (instant execution)
-                                </CardDescription>
-                            </div>
-                            <AddEmployeeDialog />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <EmployeeList
-                            onStartStream={handleStartStream}
-                            onStopStream={handleStopStream}
-                        />
-                    </CardContent>
-                </Card>
+                        {/* Balance Cards */}
+                        <BalanceCards totalFlowRate={totalFlowRate} />
+
+                        {/* Current Streaming Stats */}
+                        <StreamingStats />
+
+                        {/* Active Streams Table */}
+                        <ActiveStreamsTable />
+                    </div>
+                )}
+
+                {/* Exchange Tab */}
+                {activeTab === "exchange" && (
+                    <div className="space-y-6">
+                        <UpgradeDowngradeCard />
+                    </div>
+                )}
+
+                {/* Employees Tab */}
+                {activeTab === "employees" && (
+                    <EmployeesTab
+                        onStartStream={handleStartStream}
+                        onStopStream={handleStopStream}
+                    />
+                )}
 
                 {/* Start Stream Dialog */}
-                <StartStreamDialog
-                    employee={selectedEmployee}
-                    open={streamDialogOpen}
-                    onClose={() => {
-                        setStreamDialogOpen(false)
-                        setSelectedEmployee(null)
-                    }}
-                />
+                {streamDialogOpen && (
+                    <StartStreamDialog
+                        key="start-stream"
+                        employee={selectedEmployee}
+                        open={streamDialogOpen}
+                        onClose={() => {
+                            setStreamDialogOpen(false)
+                            setSelectedEmployee(null)
+                        }}
+                        onStreamCreated={() => {
+                            setStreamDialogOpen(false)
+                            setSelectedEmployee(null)
+                        }}
+                        forceSingleWallet={true}
+                    />
+                )}
             </main>
         </div>
     )

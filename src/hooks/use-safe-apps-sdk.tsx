@@ -8,7 +8,7 @@ import { useCallback } from "react"
 import SafeAppsSDK, { BaseTransaction } from "@safe-global/safe-apps-sdk"
 
 import { PYUSD_ADDRESS, PYUSDX_ADDRESS, SUPER_TOKEN_ABI, HOST_ADDRESS, HOST_ABI, CFAV1_ADDRESS, CFA_ABI, buildCreateFlowOperation, buildUpdateFlowOperation, buildDeleteFlowOperation } from "@/lib/contract"
-import { useSafeConfig } from "@/store/safe"
+import { useSafe } from "@/store/safe"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
@@ -50,7 +50,7 @@ const getDevelopmentSafeInfo = async () => {
  */
 export const useSafeAppsTokenOperations = () => {
     const { address } = useAccount()
-    const { safeConfig, addPendingTransaction, isSigner } = useSafeConfig()
+    const { safeConfig, addPendingTransaction, isSigner } = useSafe()
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -323,7 +323,7 @@ export const useSafeAppsInfo = () => {
  */
 export const useSafeAppsStreamOperations = () => {
     const { address } = useAccount()
-    const { safeConfig, isSigner } = useSafeConfig()
+    const { safeConfig, isSigner } = useSafe()
 
     const executeStreamOperation = useCallback(async ({
         operation,
