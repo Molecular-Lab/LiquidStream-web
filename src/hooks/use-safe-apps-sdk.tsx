@@ -79,23 +79,42 @@ export const useSafeAppsTokenOperations = () => {
 
             switch (operation) {
                 case 'upgrade':
-                    // For upgrade, we need to call the upgrade function on the SuperToken
+                    // For upgrade, we need TWO transactions: approve PYUSD + upgrade to PYUSDx
+                    // PYUSD has 6 decimals, PYUSDx has 18 decimals
+                    
+                    // Calculate the PYUSD amount (6 decimals) from PYUSDx amount (18 decimals)
+                    const pyusdAmount = amount / BigInt(10 ** 12) // Convert 18 decimals back to 6 decimals
+                    
+                    // Step 1: Approve PYUSD spending by PYUSDx contract (6 decimals)
+                    const upgradeApproveData = encodeFunctionData({
+                        abi: PYUSD_ABI,
+                        functionName: "approve",
+                        args: [tokenAddress, pyusdAmount] // tokenAddress is PYUSDx, amount in PYUSD (6 decimals)
+                    })
+
+                    // Step 2: Call upgrade function on PYUSDx contract (18 decimals)
                     const upgradeData = encodeFunctionData({
                         abi: SUPER_TOKEN_ABI,
                         functionName: "upgrade",
-                        args: [amount]
+                        args: [amount] // amount is already in 18 decimals
                     })
 
-                    transactions = [{
-                        to: tokenAddress,
-                        value: "0",
-                        data: upgradeData
-                    }]
-                    description = `Upgrade ${tokenSymbol} to ${tokenSymbol}x SuperToken`
-                    console.log("Creating upgrade transaction:", {
-                        to: tokenAddress,
-                        amount: amount.toString(),
-                        data: upgradeData
+                    transactions = [
+                        {
+                            to: PYUSD_ADDRESS, // Approve PYUSD spending (6 decimals)
+                            value: "0",
+                            data: upgradeApproveData
+                        },
+                        {
+                            to: tokenAddress, // Call upgrade on PYUSDx (18 decimals)
+                            value: "0",
+                            data: upgradeData
+                        }
+                    ]
+                    description = `Approve ${pyusdAmount.toString()} PYUSD and upgrade to ${amount.toString()} PYUSDx`
+                    console.log("Creating upgrade batch transaction:", {
+                        approve: { to: PYUSD_ADDRESS, amount: pyusdAmount.toString() + " (6 decimals)" },
+                        upgrade: { to: tokenAddress, amount: amount.toString() + " (18 decimals)" }
                     })
                     break
 
@@ -125,7 +144,7 @@ export const useSafeAppsTokenOperations = () => {
                         throw new Error("Spender address required for approval")
                     }
 
-                    const approveData = encodeFunctionData({
+                    const standaloneApproveData = encodeFunctionData({
                         abi: PYUSD_ABI,
                         functionName: "approve",
                         args: [spenderAddress, amount]
@@ -134,14 +153,14 @@ export const useSafeAppsTokenOperations = () => {
                     transactions = [{
                         to: tokenAddress,
                         value: "0",
-                        data: approveData
+                        data: standaloneApproveData
                     }]
                     description = `Approve ${tokenSymbol} spending`
                     console.log("Creating approve transaction:", {
                         to: tokenAddress,
                         spender: spenderAddress,
                         amount: amount.toString(),
-                        data: approveData
+                        data: standaloneApproveData
                     })
                     break
 

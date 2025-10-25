@@ -103,22 +103,24 @@ export function UpgradeDowngradeCard() {
         }
 
         // Create upgrade transaction using Safe Apps SDK
-        const upgradeAmount = amountInUnits * BigInt(10 ** 12) // Convert 6 to 18 decimals
+        // Note: PYUSD has 6 decimals, PYUSDx has 18 decimals
+        // We need to approve PYUSD (6 decimals) and then upgrade to PYUSDx (18 decimals)
 
         console.log("Creating Safe upgrade transaction via Safe Apps SDK:", {
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,
-          amount: upgradeAmount.toString(),
+          pyusdAmount: amountInUnits.toString(), // 6 decimals for approval
+          pyusdxAmount: (amountInUnits * BigInt(10 ** 12)).toString(), // 18 decimals for upgrade
           tokenSymbol: "PYUSD",
-          originalAmount: amount,
-          amountInUnits: amountInUnits.toString()
+          originalAmount: amount
         })
 
         createSafeAppsTransaction({
           operation: "upgrade",
           tokenAddress: PYUSDX_ADDRESS,
-          amount: upgradeAmount,
+          amount: amountInUnits * BigInt(10 ** 12), // 18 decimals for PYUSDx upgrade
           tokenSymbol: "PYUSD",
+          spenderAddress: PYUSDX_ADDRESS, // For approval
         })
 
       } else {
