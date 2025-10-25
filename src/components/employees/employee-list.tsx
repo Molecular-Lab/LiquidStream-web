@@ -1,6 +1,7 @@
 "use client"
 
 import { MoreVerticalIcon, PlayIcon, StopCircleIcon, TrashIcon, ShieldIcon, AlertTriangleIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -171,8 +172,18 @@ export function EmployeeList({ onStartStream, onStopStream }: EmployeeListProps)
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
-                          onClick={() => removeEmployee(employee.id)}
+                          onClick={() => {
+                            if (hasActiveStream) {
+                              toast.error("Cannot remove employee", {
+                                description: "Please stop the active stream before removing this employee."
+                              })
+                            } else {
+                              removeEmployee(employee.id)
+                              toast.success("Employee removed successfully")
+                            }
+                          }}
                           className="text-destructive"
+                          disabled={hasActiveStream}
                         >
                           <TrashIcon className="mr-2 h-4 w-4" />
                           Remove Employee

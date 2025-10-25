@@ -14,6 +14,7 @@ import { WorkspaceTabs, TabType } from "@/components/dashboard/workspace-tabs"
 import { EmployeesTab } from "@/components/dashboard/employees-tab"
 import { SafeTransactionStatus } from "@/components/dashboard/safe-transaction-status"
 import { PendingSignaturesAlert } from "@/components/dashboard/pending-signatures-alert"
+import { TransactionHistory } from "@/components/dashboard/transaction-history"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
 import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
 import { SingleWalletUpgradeDowngradeCard } from "@/components/swap/single-wallet-upgrade-downgrade-card"
@@ -309,6 +310,11 @@ export default function MultisigWorkspace() {
                         onStartStream={handleStartStream}
                         onStopStream={handleStopStream}
                     />
+                )}
+
+                {/* Transactions Tab */}
+                {activeTab === "transactions" && (
+                    <TransactionHistory />
                 )}
 
                 {/* Start Stream Dialog */}

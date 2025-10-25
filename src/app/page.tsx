@@ -371,7 +371,7 @@ export default function Home() {
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
-                  <Link href="https://github.com/Molecular-Lab/LiquidStream-web">
+                  <Link href="https://github.com/Molecular-Lab">
                     <Button size="lg" variant="outline" className="border-2 border-gray-300 text-gray-700 hover:border-[#0070BA] hover:text-[#0070BA] px-10 h-14 text-lg font-medium">
                       View Source
                     </Button>

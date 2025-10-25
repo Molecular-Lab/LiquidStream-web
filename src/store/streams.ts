@@ -93,7 +93,7 @@ export const useStreamStore = create<StreamState>()(
       },
     }),
     {
-      name: "liquidstream-streams",
+      name: "streams-store",
     }
   )
 )

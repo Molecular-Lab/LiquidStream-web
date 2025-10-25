@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { useStreamInfo, formatFlowRate } from "@/hooks/use-stream-info"
 import { PYUSDX_ADDRESS } from "@/lib/contract"
 import { cn } from "@/lib/utils"
+import { openBlockscout } from "@/hooks/use-blockscout"
 
 interface StreamInfoCardProps {
   sender?: Address
@@ -29,8 +30,8 @@ export function StreamInfoCard({ sender, receiver, token = PYUSDX_ADDRESS, class
     toast.success(`${label} copied to clipboard`)
   }
 
-  const openEtherscan = (address: string) => {
-    window.open(`https://sepolia.etherscan.io/address/${address}`, "_blank")
+  const openBlockscoutAddress = (address: string) => {
+    openBlockscout("address", address, "sepolia")
   }
 
   if (loading) {
@@ -96,7 +97,7 @@ export function StreamInfoCard({ sender, receiver, token = PYUSDX_ADDRESS, class
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => openEtherscan(effectiveSender!)}
+                onClick={() => openBlockscoutAddress(effectiveSender!)}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -119,7 +120,7 @@ export function StreamInfoCard({ sender, receiver, token = PYUSDX_ADDRESS, class
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => openEtherscan(receiver)}
+                onClick={() => openBlockscoutAddress(receiver)}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>

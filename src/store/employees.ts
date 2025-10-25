@@ -68,7 +68,7 @@ export const useEmployeeStore = create<EmployeeState>()(
       },
     }),
     {
-      name: "liquidstream-employees",
+      name: "employees-store",
     }
   )
 )

@@ -413,10 +413,21 @@ export const useSafeAppsStreamOperations = () => {
                     break
 
                 case 'delete':
-                    // Delete Superfluid stream operation (requires sender address)
-                    if (!address) throw new Error("Sender address required for delete operation")
+                    // Delete Superfluid stream operation
+                    // For Safe: sender must be Safe address
+                    // For direct wallet: sender is connected address
+                    const senderAddress = safeConfig?.address || address
+                    if (!senderAddress) throw new Error("Sender address required for delete operation")
 
-                    const deleteOperation = buildDeleteFlowOperation(token, address, receiver)
+                    console.log("Building delete operation with:", {
+                        token,
+                        sender: senderAddress,
+                        receiver,
+                        safeConfigAddress: safeConfig?.address,
+                        connectedAddress: address
+                    })
+
+                    const deleteOperation = buildDeleteFlowOperation(token, senderAddress as Address, receiver)
 
                     const deleteStreamData = encodeFunctionData({
                         abi: HOST_ABI,
@@ -430,10 +441,12 @@ export const useSafeAppsStreamOperations = () => {
                         data: deleteStreamData
                     }]
                     description = `Stop payment stream to ${employeeName || receiver} (${tokenSymbol})`
-                    console.log("Creating stop stream transaction:", {
+                    console.log("Stop stream transaction created:", {
                         to: HOST_ADDRESS,
-                        sender: address,
+                        sender: senderAddress,
                         receiver,
+                        token,
+                        operation: deleteOperation,
                         data: deleteStreamData
                     })
                     break

@@ -32,7 +32,7 @@ export const useWalletMode = create<WalletModeState>()(
         })),
     }),
     {
-      name: "liquidstream-wallet-mode",
+      name: "wallet-mode-store",
     }
   )
 )

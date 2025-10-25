@@ -1,8 +1,8 @@
 "use client"
 
-import { LayoutDashboard, ArrowLeftRight, Users } from "lucide-react"
+import { LayoutDashboard, ArrowLeftRight, Users, History } from "lucide-react"
 
-export type TabType = "dashboard" | "exchange" | "employees"
+export type TabType = "dashboard" | "exchange" | "employees" | "transactions"
 
 interface WorkspaceTabsProps {
   activeTab: TabType
@@ -44,6 +44,17 @@ export function WorkspaceTabs({ activeTab, onTabChange }: WorkspaceTabsProps) {
       >
         <Users className="h-4 w-4" />
         Employees
+      </button>
+      <button
+        onClick={() => onTabChange("transactions")}
+        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
+          activeTab === "transactions"
+            ? "bg-white text-[#0070BA] shadow-md"
+            : "bg-transparent text-gray-600 hover:bg-gray-200"
+        }`}
+      >
+        <History className="h-4 w-4" />
+        Transactions
       </button>
     </div>
   )

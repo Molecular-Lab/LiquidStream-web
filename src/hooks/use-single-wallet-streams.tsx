@@ -13,6 +13,7 @@ import {
     CFAV1_ADDRESS,
 } from "@/lib/contract"
 import { useStreamStore } from "@/store/streams"
+import { openBlockscout } from "@/hooks/use-blockscout"
 
 /**
  * Hook to create a new payment stream using direct wallet
@@ -81,10 +82,8 @@ export const useSingleWalletCreateStream = () => {
                 description: `Streaming ${variables.tokenSymbol} to ${variables.employeeName} - Transaction: ${result.slice(0, 10)}...`,
                 duration: 5000,
                 action: {
-                    label: "View on Explorer",
-                    onClick: () => {
-                        window.open(`https://sepolia.etherscan.io/tx/${result}`, '_blank')
-                    }
+                    label: "View on Blockscout",
+                    onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })
         },
@@ -158,10 +157,8 @@ export const useSingleWalletUpdateStream = () => {
                 description: `Stream to ${variables.employeeName || 'employee'} updated - Transaction: ${result.slice(0, 10)}...`,
                 duration: 5000,
                 action: {
-                    label: "View on Explorer",
-                    onClick: () => {
-                        window.open(`https://sepolia.etherscan.io/tx/${result}`, '_blank')
-                    }
+                    label: "View on Blockscout",
+                    onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })
         },
@@ -230,10 +227,8 @@ export const useSingleWalletDeleteStream = () => {
                 description: `Stream to ${variables.employeeName || 'employee'} stopped - Transaction: ${result.slice(0, 10)}...`,
                 duration: 5000,
                 action: {
-                    label: "View on Explorer",
-                    onClick: () => {
-                        window.open(`https://sepolia.etherscan.io/tx/${result}`, '_blank')
-                    }
+                    label: "View on Blockscout",
+                    onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })
         },
