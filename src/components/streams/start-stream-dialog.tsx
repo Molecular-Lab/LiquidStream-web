@@ -63,7 +63,7 @@ export function StartStreamDialog({
 
   const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
   const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
-  
+
   // Choose the appropriate create function
   const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 

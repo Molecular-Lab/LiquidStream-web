@@ -135,7 +135,7 @@ export default function MultisigWorkspace() {
                                             {walletMode === 'safe' ? 'Safe Multisig' : 'Direct Wallet'}
                                         </div>
                                         <div className="font-mono text-[10px] text-muted-foreground">
-                                            {walletMode === 'safe' 
+                                            {walletMode === 'safe'
                                                 ? `${safeAddress?.slice(0, 6)}...${safeAddress?.slice(-4)}`
                                                 : `${address?.slice(0, 6)}...${address?.slice(-4)}`
                                             }
