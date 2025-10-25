@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Shield, Bell, ArrowLeft, Users, Lock, FileText } from "lucide-react"
+import { Shield, Bell, ArrowLeft, Users, Lock, FileText, RefreshCw, Wallet } from "lucide-react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 
@@ -15,6 +15,7 @@ import { EmployeeList } from "@/components/employees/employee-list"
 import { StartStreamDialog } from "@/components/streams/start-stream-dialog"
 import { StreamsList } from "@/components/streams/streams-list"
 import { UpgradeDowngradeCard } from "@/components/swap/upgrade-downgrade-card"
+import { SingleWalletUpgradeDowngradeCard } from "@/components/swap/single-wallet-upgrade-downgrade-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +29,7 @@ export default function MultisigWorkspace() {
     const { address } = useAccount()
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
     const [streamDialogOpen, setStreamDialogOpen] = useState(false)
+    const [walletMode, setWalletMode] = useState<'safe' | 'direct'>('safe')
     const streams = useStreamStore((state) => state.streams)
     const { mutate: deleteStream } = useDeleteStream()
     const { safeConfig } = useSafeConfig()
@@ -105,14 +107,38 @@ export default function MultisigWorkspace() {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            {/* Safe Info */}
+                            {/* Wallet Mode Switcher */}
                             {isSafeConfigured ? (
-                                <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#0070BA]/10 border border-[#0070BA]/20 rounded-lg">
-                                    <Shield className="h-4 w-4 text-[#0070BA]" />
+                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border rounded-lg">
+                                    <div className="flex items-center bg-background rounded-md p-1">
+                                        <Button
+                                            variant={walletMode === 'safe' ? 'default' : 'ghost'}
+                                            size="sm"
+                                            onClick={() => setWalletMode('safe')}
+                                            className="h-8 px-3 text-xs"
+                                        >
+                                            <Shield className="h-3 w-3 mr-1" />
+                                            Safe
+                                        </Button>
+                                        <Button
+                                            variant={walletMode === 'direct' ? 'default' : 'ghost'}
+                                            size="sm"
+                                            onClick={() => setWalletMode('direct')}
+                                            className="h-8 px-3 text-xs"
+                                        >
+                                            <Wallet className="h-3 w-3 mr-1" />
+                                            Direct
+                                        </Button>
+                                    </div>
                                     <div className="text-xs">
-                                        <div className="text-muted-foreground">Safe Wallet</div>
-                                        <div className="font-mono font-medium">
-                                            {safeAddress?.slice(0, 6)}...{safeAddress?.slice(-4)}
+                                        <div className="font-medium text-muted-foreground">
+                                            {walletMode === 'safe' ? 'Safe Multisig' : 'Direct Wallet'}
+                                        </div>
+                                        <div className="font-mono text-[10px] text-muted-foreground">
+                                            {walletMode === 'safe'
+                                                ? `${safeAddress?.slice(0, 6)}...${safeAddress?.slice(-4)}`
+                                                : `${address?.slice(0, 6)}...${address?.slice(-4)}`
+                                            }
                                         </div>
                                     </div>
                                 </div>
@@ -145,8 +171,45 @@ export default function MultisigWorkspace() {
             </div>
 
             <main className="container mx-auto px-6 py-8 space-y-8">
+                {/* Wallet Mode Info Banner */}
+                {isSafeConfigured && walletMode === 'direct' && (
+                    <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+                        <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                                        <Wallet className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-lg text-green-800 dark:text-green-200 flex items-center gap-2">
+                                            Direct Wallet Mode
+                                            <Badge variant="outline" className="text-green-700 border-green-300">
+                                                Instant Execution
+                                            </Badge>
+                                        </div>
+                                        <div className="text-sm text-green-700 dark:text-green-300">
+                                            Transactions execute immediately with your connected wallet
+                                        </div>
+                                        <div className="text-xs text-green-600 mt-1 font-mono">
+                                            {address}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setWalletMode('safe')}
+                                    className="border-green-300 text-green-700 hover:bg-green-50"
+                                >
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Switch to Safe
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Safe Configuration Status */}
-                {isSafeConfigured ? (
+                {isSafeConfigured && walletMode === 'safe' ? (
                     <Card className="border-2 border-[#0070BA]/50 bg-gradient-to-r from-[#0070BA]/10 to-[#009CDE]/10">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
@@ -178,6 +241,15 @@ export default function MultisigWorkspace() {
                                         <Users className="mr-1 h-3 w-3" />
                                         {safeConfig.signers.length} Signers
                                     </Badge>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setWalletMode('direct')}
+                                        className="text-xs"
+                                    >
+                                        <RefreshCw className="mr-1 h-3 w-3" />
+                                        Switch to Direct
+                                    </Button>
                                 </div>
                             </div>
                         </CardContent>
@@ -215,14 +287,19 @@ export default function MultisigWorkspace() {
 
                 {/* Workspace Info */}
                 <div>
-                    <h1 className="text-3xl font-bold mb-2">Multisig Dashboard</h1>
+                    <h1 className="text-3xl font-bold mb-2">
+                        {walletMode === 'safe' ? 'Multisig Dashboard' : 'Direct Wallet Dashboard'}
+                    </h1>
                     <p className="text-muted-foreground">
-                        Manage your team&apos;s payroll streams with enterprise-grade multisig security
+                        {walletMode === 'safe'
+                            ? "Manage your team's payroll streams with enterprise-grade multisig security"
+                            : "Manage payroll streams with direct wallet execution - fast and simple"
+                        }
                     </p>
                 </div>
 
                 {/* Safe Transaction Status */}
-                {isSafeConfigured && pendingSignaturesCount > 0 && (
+                {isSafeConfigured && walletMode === 'safe' && pendingSignaturesCount > 0 && (
                     <div>
                         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <FileText className="h-5 w-5" />
@@ -233,13 +310,17 @@ export default function MultisigWorkspace() {
                 )}
 
                 {/* Safe Apps SDK Tester */}
-                <SafeAppTester />
+                {walletMode === 'safe' && <SafeAppTester />}
 
                 {/* Superfluid Dashboard */}
                 <SuperfluidDashboard />                {/* Token Operations */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Token Operations</h2>
-                    <UpgradeDowngradeCard />
+                    {walletMode === 'safe' ? (
+                        <UpgradeDowngradeCard />
+                    ) : (
+                        <SingleWalletUpgradeDowngradeCard />
+                    )}
                 </div>
 
                 {/* Stream Management */}
@@ -255,9 +336,11 @@ export default function MultisigWorkspace() {
                             <div>
                                 <CardTitle>Team Members</CardTitle>
                                 <CardDescription>
-                                    {isSafeConfigured
-                                        ? `Add employees and manage payment streams (requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures)`
-                                        : "Configure Safe multisig to manage employee payment streams securely"
+                                    {!isSafeConfigured
+                                        ? "Configure Safe multisig to manage employee payment streams securely"
+                                        : walletMode === 'safe'
+                                            ? `Add employees and manage payment streams (requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures)`
+                                            : "Add employees and manage payment streams with instant execution"
                                     }
                                 </CardDescription>
                             </div>
@@ -280,6 +363,7 @@ export default function MultisigWorkspace() {
                         setStreamDialogOpen(false)
                         setSelectedEmployee(null)
                     }}
+                    forceSingleWallet={walletMode === 'direct'}
                 />
             </main>
         </div>
