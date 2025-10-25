@@ -80,7 +80,7 @@ export function SafeAppTester() {
                             <li>Go to <strong>app.safe.global</strong></li>
                             <li>Connect your wallet and access your Safe</li>
                             <li>Navigate to <strong>Apps</strong> section</li>
-                            <li>Click <strong>"Add Custom App"</strong></li>
+                            <li>Click <strong>&quot;Add Custom App&quot;</strong></li>
                             <li>Enter: <code className="bg-orange-100 px-1 rounded">http://localhost:3001</code></li>
                             <li>Open the app within Safe interface</li>
                         </ol>
