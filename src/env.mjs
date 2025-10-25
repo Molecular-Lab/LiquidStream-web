@@ -7,7 +7,7 @@ export const env = createEnv({
     NEXT_PUBLIC_GA_ID: z.string().min(1).optional(),
   },
   runtimeEnv: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "https://safestream.vercel.app",
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
   },
 })
