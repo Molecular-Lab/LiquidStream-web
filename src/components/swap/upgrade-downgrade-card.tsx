@@ -42,7 +42,7 @@ export function UpgradeDowngradeCard() {
   const isUserSigner = address ? isSigner(address) : false
 
   // Use Safe address or connected wallet address for balance queries
-  const queryAddress = safeConfig?.address || address
+  const queryAddress = (safeConfig?.address || address) as Address | undefined
 
   // Read PYUSD balance (from Safe or connected wallet)
   const { data: pyusdBalance } = useReadContract({

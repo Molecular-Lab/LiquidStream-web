@@ -25,13 +25,13 @@ export const useTokenBalances = () => {
           address: PYUSDX_ADDRESS,
           functionName: "balanceOf",
           args: [address],
-        }),
+        } as any),
         publicClient.readContract({
           abi: ERC20_PYUSD_ABI,
           address: PYUSD_ADDRESS,
           functionName: "balanceOf",
           args: [address],
-        })
+        } as any)
       ])
       
       return {

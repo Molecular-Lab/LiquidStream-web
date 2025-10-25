@@ -97,7 +97,7 @@ export function Providers({
   return (
     <WagmiProvider config={config} initialState={initialState} reconnectOnMount={true}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider 
+        <RainbowKitProvider
           theme={darkTheme({
             accentColor: "rgba(8, 71, 247, 0.85)",
             accentColorForeground: "white",

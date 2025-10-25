@@ -43,7 +43,7 @@ export const useSafeTokenOperations = () => {
             try {
                 // Create Safe transaction builder
                 const txBuilder = await createSafeTransactionBuilder(
-                    safeConfig.address,
+                    safeConfig.address as Address,
                     walletClient
                 )
 
@@ -200,7 +200,7 @@ export const useSafeStreamOperations = () => {
 
             // Create Safe transaction builder
             const txBuilder = await createSafeTransactionBuilder(
-                safeConfig.address,
+                safeConfig.address as Address,
                 walletClient
             )
 
@@ -449,7 +449,7 @@ export const useBatchSafeOperations = () => {
             }
 
             const txBuilder = await createSafeTransactionBuilder(
-                safeConfig.address,
+                safeConfig.address as Address,
                 walletClient
             )
 
@@ -463,7 +463,7 @@ export const useBatchSafeOperations = () => {
             addPendingTransaction({
                 type: "batch_operations",
                 description: `Batch operation: ${operations.length} stream operations`,
-                to: safeConfig.address,
+                to: safeConfig.address as Address,
                 signatures: [],
                 requiredSignatures: safeConfig.threshold,
                 createdBy: address,

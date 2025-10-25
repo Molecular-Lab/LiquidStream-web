@@ -57,7 +57,7 @@ export const useStreamInfo = (token: Address, sender?: Address, receiver?: Addre
           abi: CFA_ABI,
           functionName: "getFlow",
           args: [token, senderAddress, receiverAddress],
-        })
+        } as any)
 
         const [timestamp, flowRate, deposit, owedDeposit] = result as [bigint, bigint, bigint, bigint]
 
@@ -112,7 +112,7 @@ export function useRealtimeBalance(
           abi: SUPER_TOKEN_ABI,
           functionName: "realtimeBalanceOfNow",
           args: [effectiveAccount!],
-        })) as [bigint, bigint, bigint, bigint]
+        } as any)) as [bigint, bigint, bigint, bigint]
 
         if (!mounted) return
 
@@ -181,7 +181,7 @@ export function useIncomingStreams(
           abi: CFA_ABI,
           functionName: "getNetFlow",
           args: [token, effectiveReceiver!],
-        })) as bigint
+        } as any)) as bigint
 
         if (mounted) {
           setNetFlowRate(netFlow)

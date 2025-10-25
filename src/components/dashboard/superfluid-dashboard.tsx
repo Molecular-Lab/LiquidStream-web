@@ -18,7 +18,7 @@ export function SuperfluidDashboard() {
   const { safeConfig } = useSafeConfig()
 
   // Use Safe address if configured, otherwise use connected wallet
-  const activeAddress = safeConfig?.address || address
+  const activeAddress = (safeConfig?.address || address) as Address | undefined
   const isSafeConfigured = !!safeConfig?.address
 
   const { balance, loading: balanceLoading } = useRealtimeBalance(PYUSDX_ADDRESS, activeAddress)

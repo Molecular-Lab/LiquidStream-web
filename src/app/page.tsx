@@ -16,7 +16,7 @@ export default function Home() {
     const checkSafeContext = () => {
       const inSafe = window.parent !== window
       setIsInSafe(inSafe)
-      
+
       // Check for Safe context info
       const safeInfo = (window as any).__SAFE_CONTEXT__
       if (safeInfo) {
@@ -25,7 +25,7 @@ export default function Home() {
     }
 
     checkSafeContext()
-    
+
     // Check periodically for Safe context updates
     const interval = setInterval(checkSafeContext, 1000)
     return () => clearInterval(interval)
