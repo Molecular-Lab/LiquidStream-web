@@ -431,7 +431,7 @@ export default function RegisterPage() {
                     <div className="font-semibold mb-2">Next Steps:</div>
                     <ul className="space-y-1 text-muted-foreground">
                       <li>• Invitation emails will be sent to all team members</li>
-                      <li>• You'll be redirected to set up your Safe multisig wallet</li>
+                      <li>• You&apos;ll be redirected to set up your Safe multisig wallet</li>
                       <li>• Team members will need to join and sign to activate the Safe</li>
                     </ul>
                   </div>

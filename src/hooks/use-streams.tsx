@@ -65,8 +65,8 @@ export const useCreateStream = () => {
                 addStream({
                   employeeId,
                   employeeName,
-                  employeeAddress: receiver,
-                  token,
+                  employeeAddress: receiver as `0x${string}`,
+                  token: token as `0x${string}`,
                   tokenSymbol,
                   flowRate: flowRate.toString(),
                   startTime: Date.now(),
@@ -93,8 +93,8 @@ export const useCreateStream = () => {
         addStream({
           employeeId,
           employeeName,
-          employeeAddress: receiver,
-          token,
+          employeeAddress: receiver as `0x${string}`,
+          token: token as `0x${string}`,
           tokenSymbol,
           flowRate: flowRate.toString(),
           startTime: Date.now(),

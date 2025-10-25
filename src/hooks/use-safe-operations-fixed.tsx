@@ -115,7 +115,6 @@ export const useSafeTokenOperations = () => {
                     nonce: transactionData.nonce,
                     safeTransactionHash: txHash,
                     tokenSymbol,
-                    amount: amount.toString(),
                     data: JSON.stringify(transactionData), // Store transaction data for Safe API
                 })
 
@@ -455,9 +454,10 @@ export const useBatchSafeOperations = () => {
             )
 
             // Create batch transaction
-            const safeTransaction = await txBuilder.batchStreamOperations(operations)
-            const txHash = await txBuilder.getTransactionHash(safeTransaction)
-            const transactionData = await txBuilder.getTransactionData(safeTransaction)
+            const safeTransactions = await txBuilder.batchStreamOperations(operations)
+            const firstTransaction = Array.isArray(safeTransactions) ? safeTransactions[0] : safeTransactions
+            const txHash = await txBuilder.getTransactionHash(firstTransaction)
+            const transactionData = await txBuilder.getTransactionData(firstTransaction)
 
             // Add to pending transactions
             addPendingTransaction({

@@ -87,7 +87,7 @@ export default function Home() {
               <CardTitle>Real-Time Streaming</CardTitle>
               <CardDescription>
                 Money flows continuously to employees. No more waiting for payday - 
-                access earnings as they're earned.
+                access earnings as they&apos;re earned.
               </CardDescription>
             </CardHeader>
           </Card>

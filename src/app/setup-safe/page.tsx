@@ -88,7 +88,7 @@ export default function SetupSafePage() {
       updated[0].address = address
       setSigners(updated)
     }
-  }, [address])
+  }, [address, signers])
 
   const addOperatorAsSigner = (operator: TeamMember) => {
     // Check if already added

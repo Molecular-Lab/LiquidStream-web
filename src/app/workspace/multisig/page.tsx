@@ -217,7 +217,7 @@ export default function MultisigWorkspace() {
                 <div>
                     <h1 className="text-3xl font-bold mb-2">Multisig Dashboard</h1>
                     <p className="text-muted-foreground">
-                        Manage your team's payroll streams with enterprise-grade multisig security
+                        Manage your team&apos;s payroll streams with enterprise-grade multisig security
                     </p>
                 </div>
 

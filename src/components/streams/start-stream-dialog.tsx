@@ -242,6 +242,7 @@ export function StartStreamDialog({
                           <img
                             src={"/paypal-usd-pyusd-logo.png"}
                             className="h-5 w-5 rounded-full"
+                            alt="PYUSDx token logo"
                           />
                           {currencies["pyusdx"].symbol}
                         </div>
