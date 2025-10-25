@@ -1,24 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Shield, Users, CheckCircle2, ArrowRight, Loader2, Plus, X, ChevronDown } from "lucide-react"
-import { useAccount } from "wagmi"
+import { Shield, Users, CheckCircle2, ArrowRight, Loader2, Plus, X } from "lucide-react"
+import { useAccount, useWalletClient, useSendTransaction } from "wagmi"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { toast } from "sonner"
+import Safe from "@safe-global/protocol-kit"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useWorkspace } from "@/store/workspace"
 import { useSafe, type SafeSigner } from "@/store/safe"
 
@@ -27,50 +21,31 @@ interface Signer {
   name: string
   email?: string
   role?: string
-  operatorId?: string // To track which operator was selected
-}
-
-interface WorkspaceData {
-  company: {
-    name: string
-    industry: string
-    size: string
-    country: string
-  }
-  team: Array<{
-    email: string
-    role: string
-    name: string
-  }>
-  createdAt: string
 }
 
 export default function SetupSafePage() {
   const router = useRouter()
   const { address, isConnected, chain } = useAccount()
+  const { data: walletClient } = useWalletClient()
+  const { sendTransaction } = useSendTransaction()
   const { registration: workspaceData } = useWorkspace()
   const { setSafeConfig } = useSafe()
 
   const [isCreating, setIsCreating] = useState(false)
   const [safeCreated, setSafeCreated] = useState(false)
   const [safeAddress, setSafeAddress] = useState("")
-
-  // Signers state (owner only initially, operators added via dropdown)
   const [signers, setSigners] = useState<Signer[]>([
     { address: address || "", name: "You (Owner)", role: "Owner" },
   ])
-
-  // Threshold (minimum signatures required)
   const [threshold, setThreshold] = useState(1)
 
-  // Update owner address when wallet connects
   useEffect(() => {
     if (address && signers[0] && signers[0].address !== address) {
       const updated = [...signers]
       updated[0].address = address
       setSigners(updated)
     }
-  }, [address, signers])
+  }, [address])
 
   const addManualSigner = () => {
     setSigners([...signers, { address: "", name: "", role: "Custom Signer" }])
@@ -78,7 +53,6 @@ export default function SetupSafePage() {
 
   const removeSigner = (index: number) => {
     if (signers.length > 1 && index > 0) {
-      // Can't remove the owner (index 0)
       setSigners(signers.filter((_, i) => i !== index))
       if (threshold > signers.length - 1) {
         setThreshold(signers.length - 1)
@@ -93,38 +67,107 @@ export default function SetupSafePage() {
   }
 
   const handleCreateSafe = async () => {
-    if (!isConnected || !address) {
+    if (!isConnected || !address || !walletClient) {
       toast.error("Please connect your wallet first")
       return
     }
 
-    // Validate all signers have addresses
+    if (chain?.id !== 11155111) {
+      toast.error("Please switch to Sepolia network")
+      return
+    }
+
     const hasEmptyAddresses = signers.slice(1).some((s) => !s.address)
     if (hasEmptyAddresses) {
       toast.error("Please fill in all signer addresses")
       return
     }
 
+    if (signers.length === 0) {
+      toast.error("Please add at least one signer")
+      return
+    }
+
+    if (threshold > signers.length || threshold === 0) {
+      toast.error("Invalid threshold value")
+      return
+    }
+
     setIsCreating(true)
 
     try {
-      toast.info("Creating Safe wallet configuration...")
+      toast.info("Creating Safe wallet...")
 
-      // For demo purposes, generate a mock Safe address
-      // In production, this would deploy an actual Safe smart contract
-      const mockSafeAddress = `0x${Math.random().toString(16).slice(2, 10)}${address?.slice(2, 42) || '0'.repeat(32)}`
-      
-      console.log("🔐 Mock Safe Wallet Address:", mockSafeAddress)
+      const protocolKit = await Safe.init({
+        provider: window.ethereum as any,
+        signer: walletClient.account.address,
+        predictedSafe: {
+          safeAccountConfig: {
+            owners: signers.map(s => s.address),
+            threshold: threshold,
+          },
+        },
+      })
+
+      const predictedAddress = await protocolKit.getAddress()
+
+      console.log("🔐 Safe Wallet Address:", predictedAddress)
       console.log("📋 Owners:", signers.map(s => s.address))
       console.log("🔢 Threshold:", threshold)
 
-      // Simulate deployment delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      toast.info(`Safe address: ${predictedAddress.slice(0, 10)}... Deploying contract...`)
 
-      setSafeAddress(mockSafeAddress)
+      const isDeployed = await protocolKit.isSafeDeployed()
+      let finalDeploymentStatus = isDeployed
+
+      if (!isDeployed) {
+        const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction()
+        toast.info("Deploying Safe contract...")
+
+        const txHash = await new Promise<string>((resolve, reject) => {
+          sendTransaction(
+            {
+              to: deploymentTransaction.to as `0x${string}`,
+              data: deploymentTransaction.data as `0x${string}`,
+            },
+            {
+              onSuccess: (hash) => resolve(hash),
+              onError: (error) => reject(error),
+            }
+          )
+        })
+
+        toast.info(`Transaction submitted: ${txHash.slice(0, 10)}... Waiting for confirmation...`)
+        await new Promise(resolve => setTimeout(resolve, 15000))
+
+        let attempts = 0
+        let deployed = false
+
+        while (attempts < 3 && !deployed) {
+          deployed = await protocolKit.isSafeDeployed()
+          if (!deployed) {
+            console.log(`⏳ Deployment check ${attempts + 1}/3 - not confirmed yet, waiting...`)
+            await new Promise(resolve => setTimeout(resolve, 5000))
+          }
+          attempts++
+        }
+
+        finalDeploymentStatus = deployed
+
+        if (!deployed) {
+          console.warn("⚠️ Safe deployment not confirmed after 3 attempts")
+          toast.warning("Safe deployment is taking longer than expected. You may need to refresh after deployment completes.")
+        } else {
+          console.log("✅ Safe deployment confirmed on-chain")
+          toast.success("Safe deployed successfully!")
+        }
+      } else {
+        console.log("ℹ️ Safe already deployed at:", predictedAddress)
+      }
+
+      setSafeAddress(predictedAddress)
       setSafeCreated(true)
 
-      // Save Safe configuration to Zustand store
       const safeSigners: SafeSigner[] = signers.map((s) => ({
         address: s.address,
         name: s.name,
@@ -132,20 +175,27 @@ export default function SetupSafePage() {
         role: s.role,
       }))
 
+      console.log("✅ Safe Created Successfully!")
+      console.log("📍 Safe Address:", predictedAddress)
+      console.log("✨ Deployment Status:", finalDeploymentStatus ? "DEPLOYED" : "PENDING")
+      console.log("👥 Signers:", safeSigners)
+      console.log("🔐 Threshold:", threshold, "of", safeSigners.length)
+
       setSafeConfig({
-        address: mockSafeAddress,
+        address: predictedAddress,
         signers: safeSigners,
         threshold: threshold,
-        chainId: chain?.id || 11155111, // Sepolia
+        chainId: chain?.id || 11155111,
         createdAt: new Date().toISOString(),
         createdBy: address,
+        workspaceName: workspaceData?.name,
       })
+
+      console.log("💾 Safe config saved to store")
 
       toast.success("Safe wallet created successfully!", {
-        description: `Safe Address: ${mockSafeAddress.slice(0, 10)}...`,
+        description: `Safe Address: ${predictedAddress.slice(0, 10)}...`,
       })
-
-      // TODO: Send notifications to all signers to confirm/sign
 
     } catch (error: any) {
       console.error("Safe creation error:", error)
@@ -163,13 +213,12 @@ export default function SetupSafePage() {
     })
 
     setTimeout(() => {
-      router.push("/workspace/multisig")
+      router.push("/workspace")
     }, 1000)
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      {/* Header */}
       <div className="border-b">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="text-2xl font-bold bg-gradient-to-r from-[#0070BA] to-[#009CDE] bg-clip-text text-transparent">
@@ -181,7 +230,6 @@ export default function SetupSafePage() {
 
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto">
-          {/* Header Section */}
           <div className="text-center mb-12">
             <div className="w-16 h-16 bg-[#0070BA]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="h-8 w-8 text-[#0070BA]" />
@@ -192,7 +240,6 @@ export default function SetupSafePage() {
               required for all transactions.
             </p>
 
-            {/* Workspace Info Banner */}
             {workspaceData && (
               <div className="mt-6 max-w-md mx-auto">
                 <Card className="border-[#0070BA]/50 bg-[#0070BA]/5">
@@ -213,7 +260,6 @@ export default function SetupSafePage() {
 
           {!safeCreated ? (
             <>
-              {/* Safe Configuration */}
               <Card className="border-2 mb-8">
                 <CardHeader>
                   <CardTitle>Configure Your Safe</CardTitle>
@@ -222,7 +268,6 @@ export default function SetupSafePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Owner (Current User) */}
                   <div className="space-y-4">
                     <Label className="text-base font-semibold">Signers</Label>
 
@@ -236,7 +281,6 @@ export default function SetupSafePage() {
                       </div>
                     </div>
 
-                    {/* Additional Signers */}
                     {signers.slice(1).map((signer, index) => (
                       <div key={index + 1} className="p-4 border rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
@@ -257,64 +301,33 @@ export default function SetupSafePage() {
                           </Button>
                         </div>
 
-                        {signer.operatorId ? (
-                          // Operator from workspace - show info only
-                          <div className="space-y-2">
-                            <div className="text-sm text-muted-foreground">
-                              From workspace operators
-                            </div>
-                            {signer.email && (
-                              <div className="text-sm">
-                                <span className="text-muted-foreground">Email:</span> {signer.email}
-                              </div>
-                            )}
-                            <div className="space-y-2">
-                              <Label className="text-sm">
-                                Wallet Address <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                placeholder="0x... (operator needs to provide)"
-                                value={signer.address}
-                                onChange={(e) =>
-                                  updateSigner(index + 1, "address", e.target.value)
-                                }
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          // Manual signer - full form
-                          <>
-                            <div className="space-y-2">
-                              <Label className="text-sm">Name</Label>
-                              <Input
-                                placeholder="Team member name"
-                                value={signer.name}
-                                onChange={(e) =>
-                                  updateSigner(index + 1, "name", e.target.value)
-                                }
-                              />
-                            </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm">Name</Label>
+                          <Input
+                            placeholder="Team member name"
+                            value={signer.name}
+                            onChange={(e) =>
+                              updateSigner(index + 1, "name", e.target.value)
+                            }
+                          />
+                        </div>
 
-                            <div className="space-y-2">
-                              <Label className="text-sm">
-                                Wallet Address <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                placeholder="0x..."
-                                value={signer.address}
-                                onChange={(e) =>
-                                  updateSigner(index + 1, "address", e.target.value)
-                                }
-                              />
-                            </div>
-                          </>
-                        )}
+                        <div className="space-y-2">
+                          <Label className="text-sm">
+                            Wallet Address <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            placeholder="0x..."
+                            value={signer.address}
+                            onChange={(e) =>
+                              updateSigner(index + 1, "address", e.target.value)
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
 
-                    {/* Add Signer Buttons */}
                     <div className="space-y-2">
-                      {/* Manual signer button */}
                       <Button
                         variant="outline"
                         className="w-full"
@@ -326,7 +339,6 @@ export default function SetupSafePage() {
                     </div>
                   </div>
 
-                  {/* Threshold Configuration */}
                   <div className="space-y-4 pt-4 border-t">
                     <div>
                       <Label className="text-base font-semibold">
@@ -357,28 +369,13 @@ export default function SetupSafePage() {
                       />
 
                       <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div
-                          className={`p-2 rounded ${threshold === 1
-                            ? "bg-orange-100 text-orange-700 border border-orange-300"
-                            : "bg-muted text-muted-foreground"
-                            }`}
-                        >
+                        <div className={`p-2 rounded ${threshold === 1 ? "bg-orange-100 text-orange-700 border border-orange-300" : "bg-muted text-muted-foreground"}`}>
                           Low Security
                         </div>
-                        <div
-                          className={`p-2 rounded ${threshold > 1 && threshold < signers.length
-                            ? "bg-green-100 text-green-700 border border-green-300"
-                            : "bg-muted text-muted-foreground"
-                            }`}
-                        >
+                        <div className={`p-2 rounded ${threshold > 1 && threshold < signers.length ? "bg-green-100 text-green-700 border border-green-300" : "bg-muted text-muted-foreground"}`}>
                           Recommended
                         </div>
-                        <div
-                          className={`p-2 rounded ${threshold === signers.length
-                            ? "bg-blue-100 text-blue-700 border border-blue-300"
-                            : "bg-muted text-muted-foreground"
-                            }`}
-                        >
+                        <div className={`p-2 rounded ${threshold === signers.length ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-muted text-muted-foreground"}`}>
                           Maximum Security
                         </div>
                       </div>
@@ -387,7 +384,6 @@ export default function SetupSafePage() {
                 </CardContent>
               </Card>
 
-              {/* Information Cards */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
                 <Card className="border-2">
                   <CardHeader>
@@ -396,21 +392,15 @@ export default function SetupSafePage() {
                   <CardContent className="space-y-3 text-sm">
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        Safe wallet will be deployed with your configuration
-                      </div>
+                      <div>Safe wallet will be deployed with your configuration</div>
                     </div>
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        All signers will receive notification to join
-                      </div>
+                      <div>All signers will receive notification to join</div>
                     </div>
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        Transactions require {threshold} signature{threshold > 1 ? "s" : ""} to execute
-                      </div>
+                      <div>Transactions require {threshold} signature{threshold > 1 ? "s" : ""} to execute</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -422,27 +412,20 @@ export default function SetupSafePage() {
                   <CardContent className="space-y-3 text-sm">
                     <div className="flex items-start gap-2">
                       <Shield className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        No single point of failure - shared control
-                      </div>
+                      <div>No single point of failure - shared control</div>
                     </div>
                     <div className="flex items-start gap-2">
                       <Shield className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        Transparent audit trail for all transactions
-                      </div>
+                      <div>Transparent audit trail for all transactions</div>
                     </div>
                     <div className="flex items-start gap-2">
                       <Shield className="h-5 w-5 text-[#0070BA] flex-shrink-0 mt-0.5" />
-                      <div>
-                        Battle-tested by thousands of organizations
-                      </div>
+                      <div>Battle-tested by thousands of organizations</div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Create Safe Button */}
               <div className="flex justify-center">
                 <Button
                   size="lg"
@@ -465,7 +448,6 @@ export default function SetupSafePage() {
               </div>
             </>
           ) : (
-            /* Success State */
             <Card className="border-2 border-green-500/50 bg-green-50/50 dark:bg-green-950/20">
               <CardContent className="p-12 text-center space-y-6">
                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
@@ -511,15 +493,9 @@ export default function SetupSafePage() {
                 <div className="bg-[#0070BA]/10 border border-[#0070BA]/20 rounded-lg p-4">
                   <div className="text-sm space-y-1">
                     <div className="font-semibold">Next Steps:</div>
-                    <div className="text-muted-foreground">
-                      • Fund your Safe wallet with PYUSD
-                    </div>
-                    <div className="text-muted-foreground">
-                      • Upgrade PYUSD to PYUSDx for streaming
-                    </div>
-                    <div className="text-muted-foreground">
-                      • Add employees and start streaming payroll
-                    </div>
+                    <div className="text-muted-foreground">• Fund your Safe wallet with PYUSD</div>
+                    <div className="text-muted-foreground">• Upgrade PYUSD to PYUSDx for streaming</div>
+                    <div className="text-muted-foreground">• Add employees and start streaming payroll</div>
                   </div>
                 </div>
 
