@@ -89,9 +89,9 @@ export const useSingleWalletTokenOperations = () => {
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ["token-balances"] })
 
-            const operationName = variables.operation === 'upgrade' ? 'Upgrade' : 
-                                variables.operation === 'downgrade' ? 'Downgrade' : 'Approval'
-            
+            const operationName = variables.operation === 'upgrade' ? 'Upgrade' :
+                variables.operation === 'downgrade' ? 'Downgrade' : 'Approval'
+
             let description = ""
             if (variables.operation === 'upgrade') {
                 description = `Successfully upgraded ${variables.tokenSymbol} to ${variables.tokenSymbol}x SuperToken`
@@ -114,7 +114,7 @@ export const useSingleWalletTokenOperations = () => {
         },
         onError: (error: Error, variables) => {
             console.error(`Token ${variables.operation} error:`, error)
-            
+
             let errorMessage = error.message
             if (error.message.includes('User rejected')) {
                 errorMessage = 'Transaction was cancelled by user'
@@ -137,7 +137,7 @@ export const useSingleWalletTokenOperations = () => {
  */
 export const useSingleWalletUpgradeWithApproval = () => {
     const { mutate: tokenOperation } = useSingleWalletTokenOperations()
-    
+
     return useMutation({
         mutationFn: async ({
             amount,

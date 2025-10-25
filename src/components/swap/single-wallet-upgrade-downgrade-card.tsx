@@ -29,7 +29,7 @@ export function SingleWalletUpgradeDowngradeCard() {
         e.preventDefault()
         if (!amount || !address) return
 
-        const parsedAmount = operation === 'upgrade' 
+        const parsedAmount = operation === 'upgrade'
             ? parseUnits(amount, 6)  // PYUSD has 6 decimals
             : parseUnits(amount, 18) // PYUSDx has 18 decimals
 
@@ -52,7 +52,7 @@ export function SingleWalletUpgradeDowngradeCard() {
         setAmount("")
     }
 
-    const maxBalance = operation === 'upgrade' 
+    const maxBalance = operation === 'upgrade'
         ? balances?.pyusd || 0
         : balances?.pyusdx || 0
 
@@ -167,8 +167,8 @@ export function SingleWalletUpgradeDowngradeCard() {
                         {isLoading ? (
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                {operation === 'upgrade' && isUpgradePending ? 'Processing Upgrade...' : 
-                                 operation === 'upgrade' ? 'Approving & Upgrading...' : 'Downgrading...'}
+                                {operation === 'upgrade' && isUpgradePending ? 'Processing Upgrade...' :
+                                    operation === 'upgrade' ? 'Approving & Upgrading...' : 'Downgrading...'}
                             </div>
                         ) : (
                             `${operation === 'upgrade' ? 'Upgrade' : 'Downgrade'} ${symbol}`

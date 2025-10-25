@@ -53,7 +53,7 @@ export function StartStreamDialog({
     tokenSymbol: string
     txHash: string
   } | null>(null)
-  
+
   // Use appropriate hook based on Safe configuration
   const { mutate: createStreamMultisig, isPending: isPendingMultisig } = useCreateStream()
   const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
@@ -61,7 +61,7 @@ export function StartStreamDialog({
 
   const isSafeConfigured = !!safeConfig?.address
   const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
-  
+
   // Choose the appropriate create function
   const createStream = isSafeConfigured ? createStreamMultisig : createStreamSingle
 
