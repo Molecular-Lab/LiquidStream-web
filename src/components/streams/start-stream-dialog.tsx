@@ -37,12 +37,14 @@ interface StartStreamDialogProps {
   employee: Employee | null
   open: boolean
   onClose: () => void
+  forceSingleWallet?: boolean
 }
 
 export function StartStreamDialog({
   employee,
   open,
   onClose,
+  forceSingleWallet = false,
 }: StartStreamDialogProps) {
   const [selectedToken, setSelectedToken] = useState<CurrencyKey>("pyusdx")
   const [frequency, setFrequency] = useState<StreamFrequency>("monthly")
@@ -59,7 +61,8 @@ export function StartStreamDialog({
   const { mutate: createStreamSingle, isPending: isPendingSingle } = useSingleWalletCreateStream()
   const { safeConfig } = useSafeConfig()
 
-  const isSafeConfigured = !!safeConfig?.address
+  // Determine wallet mode - force single wallet overrides Safe configuration
+  const isSafeConfigured = !!safeConfig?.address && !forceSingleWallet
   const isPending = isSafeConfigured ? isPendingMultisig : isPendingSingle
 
   // Choose the appropriate create function
@@ -199,7 +202,7 @@ export function StartStreamDialog({
             </DialogTitle>
             <DialogDescription className="text-base">
               {isSafeConfigured
-                ? `Create a proposal to stream payments to ${employee.name} (requires ${safeConfig.threshold}/${safeConfig.signers.length} signatures)`
+                ? `Create a proposal to stream payments to ${employee.name} (requires ${safeConfig?.threshold}/${safeConfig?.signers.length} signatures)`
                 : `Stream payments to ${employee.name}`
               }
             </DialogDescription>
