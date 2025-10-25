@@ -81,10 +81,10 @@ export const useSafeAppsTokenOperations = () => {
                 case 'upgrade':
                     // For upgrade, we need TWO transactions: approve PYUSD + upgrade to PYUSDx
                     // PYUSD has 6 decimals, PYUSDx has 18 decimals
-                    
+
                     // Calculate the PYUSD amount (6 decimals) from PYUSDx amount (18 decimals)
                     const pyusdAmount = amount / BigInt(10 ** 12) // Convert 18 decimals back to 6 decimals
-                    
+
                     // Step 1: Approve PYUSD spending by PYUSDx contract (6 decimals)
                     const upgradeApproveData = encodeFunctionData({
                         abi: PYUSD_ABI,
