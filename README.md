@@ -4,7 +4,7 @@
 
 SafeStream transforms enterprise payroll management by enabling automated, real-time PYUSD streaming through Safe multisig wallets—making PYUSD the backbone of next-generation payroll systems.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live-green)](https://safestream.vercel.app) [![Safe App](https://img.shields.io/badge/Safe_App-Live-00E673)](https://app.safe.global/share/safe-app?appUrl=https%3A%2F%2Fsafe-stream.vercel.app&chain=sep) [![ETHGlobal](https://img.shields.io/badge/ETHGlobal-2025-blue)](https://ethglobal.com/showcase/safestream-dxmwb) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Live Demo](https://img.shields.io/badge/Demo-Live-green)](https://safe-stream.vercel.app) [![Safe App](https://img.shields.io/badge/Safe_App-Live-00E673)](https://app.safe.global/share/safe-app?appUrl=https%3A%2F%2Fsafe-stream.vercel.app&chain=sep) [![ETHGlobal](https://img.shields.io/badge/ETHGlobal-2025-blue)](https://ethglobal.com/showcase/safestream-dxmwb) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 ## Table of Contents
 
@@ -47,8 +47,9 @@ Real-time PYUSD streaming that revolutionizes payroll:
 ## 🎬 Live Demo
 
 **Try it now**:
-- **Standalone App**: [safestream.vercel.app](https://safestream.vercel.app)
+- **Standalone App**: [safe-stream.vercel.app](https://safe-stream.vercel.app)
 - **Safe App (Multisig)**: [Open in Safe](https://app.safe.global/share/safe-app?appUrl=https%3A%2F%2Fsafe-stream.vercel.app&chain=sep)
+- **ETHGlobal Showcase**: [View Project](https://ethglobal.com/showcase/safestream-dxmwb)
 
 ### Key User Flows
 
