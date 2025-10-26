@@ -129,8 +129,5 @@ export const PYUSDX_ADDRESS = "0xYOUR_DEPLOYED_ADDRESS"
 
 ## Documentation
 
-- [ABI Documentation](./abi/README.md)
-- [Interface Reference](./contracts/interfaces/README.md)
-- [Architecture](./docs/ARCHITECTURE.md)
-- [Security Guide](./SECURITY.md)
+- [Quick Start Guide](./docs/QUICKSTART.md)
 - [Superfluid Docs](https://docs.superfluid.finance)
