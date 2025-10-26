@@ -79,10 +79,10 @@ export const useSingleWalletCreateStream = () => {
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ["streams"] })
             toast.success("Payment stream started! 🚀", {
-                description: `Streaming ${variables.tokenSymbol} to ${variables.employeeName} - Transaction: ${result.slice(0, 10)}...`,
+                description: `Streaming ${variables.tokenSymbol} to ${variables.employeeName}`,
                 duration: 5000,
                 action: {
-                    label: "View on Blockscout",
+                    label: "View on Explorer",
                     onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })
@@ -154,10 +154,10 @@ export const useSingleWalletUpdateStream = () => {
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ["streams"] })
             toast.success("Payment stream updated! ⚡", {
-                description: `Stream to ${variables.employeeName || 'employee'} updated - Transaction: ${result.slice(0, 10)}...`,
+                description: `Stream to ${variables.employeeName || 'employee'} updated`,
                 duration: 5000,
                 action: {
-                    label: "View on Blockscout",
+                    label: "View on Explorer",
                     onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })
@@ -224,10 +224,10 @@ export const useSingleWalletDeleteStream = () => {
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: ["streams"] })
             toast.success("Payment stream stopped! ⏹️", {
-                description: `Stream to ${variables.employeeName || 'employee'} stopped - Transaction: ${result.slice(0, 10)}...`,
+                description: `Stream to ${variables.employeeName || 'employee'} stopped`,
                 duration: 5000,
                 action: {
-                    label: "View on Blockscout",
+                    label: "View on Explorer",
                     onClick: () => openBlockscout("tx", result, "sepolia")
                 }
             })

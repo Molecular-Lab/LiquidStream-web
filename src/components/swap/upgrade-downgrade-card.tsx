@@ -17,6 +17,7 @@ import { useSafe } from "@/store/safe"
 import { useWalletMode } from "@/store/wallet-mode"
 import { useSafeTokenOperations } from "@/hooks/use-safe-operations"
 import { useSafeAppsTokenOperations, useConnectedSafeInfo } from "@/hooks/use-safe-apps-sdk"
+import { openBlockscout } from "@/hooks/use-blockscout"
 import { parseAbi } from "viem"
 
 const PYUSD_ABI = parseAbi([
@@ -182,7 +183,12 @@ export function UpgradeDowngradeCard() {
           })
 
           if (receipt.status === 'success') {
-            toast.success("Approval confirmed! ✅")
+            toast.success("Approval confirmed! ✅", {
+              action: {
+                label: "View on Explorer",
+                onClick: () => openBlockscout("tx", approveTx, "sepolia")
+              }
+            })
             await refetchAllowance()
             await new Promise(resolve => setTimeout(resolve, 1000))
           } else {
@@ -214,6 +220,10 @@ export function UpgradeDowngradeCard() {
         if (upgradeReceipt.status === 'success') {
           toast.success("Upgrade successful! 🎉", {
             description: `Wrapped ${amount} PYUSD to PYUSDx`,
+            action: {
+              label: "View on Explorer",
+              onClick: () => openBlockscout("tx", upgradeTx, "sepolia")
+            }
           })
         } else {
           throw new Error("Upgrade transaction failed")
@@ -284,6 +294,10 @@ export function UpgradeDowngradeCard() {
 
         toast.success("Downgrade successful! 🎉", {
           description: `Unwrapped ${amount} PYUSDx to PYUSD`,
+          action: {
+            label: "View on Explorer",
+            onClick: () => openBlockscout("tx", downgradeTx, "sepolia")
+          }
         })
       }
 

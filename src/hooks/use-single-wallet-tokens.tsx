@@ -103,10 +103,10 @@ export const useSingleWalletTokenOperations = () => {
             }
 
             toast.success(`${operationName} completed! ✅`, {
-                description: `${description} - Transaction: ${result.hash.slice(0, 10)}...`,
+                description: description,
                 duration: 5000,
                 action: {
-                    label: "View on Blockscout",
+                    label: "View on Explorer",
                     onClick: () => openBlockscout("tx", result.hash, "sepolia")
                 }
             })

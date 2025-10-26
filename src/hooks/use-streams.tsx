@@ -15,6 +15,7 @@ import {
 import { useStreamStore } from "@/store/streams"
 import { useSafe } from "@/store/safe"
 import { useSafeAppsStreamOperations } from "@/hooks/use-safe-apps-sdk"
+import { openBlockscout } from "@/hooks/use-blockscout"
 
 /**
  * Hook to create a new payment stream using Safe multisig or direct wallet
@@ -114,7 +115,11 @@ export const useCreateStream = () => {
         })
       } else {
         toast.success("Payment stream created successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
+          description: "Stream is now active",
+          action: {
+            label: "View on Explorer",
+            onClick: () => openBlockscout("tx", result, "sepolia")
+          }
         })
       }
     },
@@ -211,7 +216,11 @@ export const useUpdateStream = () => {
         })
       } else {
         toast.success("Stream updated successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
+          description: "Stream flow rate has been updated",
+          action: {
+            label: "View on Explorer",
+            onClick: () => openBlockscout("tx", result, "sepolia")
+          }
         })
       }
     },
@@ -299,7 +308,11 @@ export const useDeleteStream = () => {
         })
       } else {
         toast.success("Stream stopped successfully!", {
-          description: `Transaction hash: ${result.slice(0, 10)}...`,
+          description: "Stream has been stopped",
+          action: {
+            label: "View on Explorer",
+            onClick: () => openBlockscout("tx", result, "sepolia")
+          }
         })
       }
     },
