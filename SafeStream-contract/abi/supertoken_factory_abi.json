@@ -1,0 +1,173 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "underlyingToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "underlyingDecimals",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "upgradability",
+        "type": "uint8"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
+    ],
+    "name": "createERC20Wrapper",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "superToken",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_underlyingToken",
+        "type": "address"
+      }
+    ],
+    "name": "createCanonicalERC20Wrapper",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getHost",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "host",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getSuperTokenLogic",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "superToken",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_underlyingToken",
+        "type": "address"
+      }
+    ],
+    "name": "computeCanonicalERC20WrapperAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "superTokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "isDeployed",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_underlyingTokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getCanonicalERC20Wrapper",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "superTokenAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "SuperTokenCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "CustomSuperTokenCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tokenLogic",
+        "type": "address"
+      }
+    ],
+    "name": "SuperTokenLogicCreated",
+    "type": "event"
+  }
+]

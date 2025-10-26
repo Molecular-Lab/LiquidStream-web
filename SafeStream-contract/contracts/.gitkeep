@@ -1,0 +1,3 @@
+# This folder is intentionally empty
+# We use @superfluid-finance/ethereum-contracts package for all contracts
+# We only deploy to already-deployed Superfluid protocol contracts
